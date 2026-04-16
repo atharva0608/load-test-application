@@ -19,6 +19,9 @@ RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuse
 
 WORKDIR /app
 
+# Install curl for health check probes in CI
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
 # Copy installed packages
 COPY --from=builder /install /usr/local
 

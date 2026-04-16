@@ -145,8 +145,9 @@ pipeline {
             steps {
                 script {
                     echo "Starting containers for testing..."
-                    // Run explicitly named project
-                    sh 'docker compose -p stressforge up -d'
+                    // Automatically assign ephemeral ports to prevent port collisions across concurrent runs.
+                    // The testing queries use 'docker exec' connecting to internal 'localhost', which ignores host port bindings.
+                    sh 'API_HOST_PORT=0 FRONTEND_HOST_PORT=0 LOCUST_HOST_PORT=0 docker compose -p stressforge up -d'
                     
                     echo "Waiting 30 seconds for services to initialize..."
                     sleep 30
