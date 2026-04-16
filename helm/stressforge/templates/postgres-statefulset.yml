@@ -46,6 +46,9 @@ spec:
           ports:
             - containerPort: 5432
               name: postgres
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
           envFrom:
             - configMapRef:
                 name: postgres-config
