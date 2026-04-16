@@ -19,6 +19,8 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
+                // Completely clean the workspace to prevent "fatal: not in a git directory" corruption
+                deleteDir()
                 // Explicit Git checkout using the correct credentials id
                 git branch: 'staging', credentialsId: 'Github-Ecc', url: 'https://github.com/atharva0608/load-test-application.git'
             }
