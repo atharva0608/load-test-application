@@ -1,0 +1,180 @@
+# ═══════════════════════════════════════════════════════════
+# StressForge — Docker Compose Orchestration
+# ═══════════════════════════════════════════════════════════
+# Brings up all 6 services with health checks, volumes, and
+# resource limits. Ready for local testing and Locust load sim.
+#
+# Usage:
+#   docker compose up --build
+#   docker compose up -d            # detached
+#   docker compose down -v          # cleanup + volumes
+# ═══════════════════════════════════════════════════════════
+
+services:
+  # ── PostgreSQL (StatefulSet candidate) ──
+  postgres:
+    image: postgres:16-alpine
+    container_name: sf-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-stressforge_db}
+      POSTGRES_USER: ${POSTGRES_USER:-stressforge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stressforge_pass}
+    # No host port — accessed internally via Docker network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stressforge} -d ${POSTGRES_DB:-stressforge_db}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+    restart: unless-stopped
+    networks:
+      - stressforge-net
+
+  # ── Redis (StatefulSet candidate) ──
+  redis:
+    image: redis:7-alpine
+    container_name: sf-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    # No host port — accessed internally via Docker network
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+          cpus: "0.5"
+    restart: unless-stopped
+    networks:
+      - stressforge-net
+
+  # ── API Server (Deployment — stateless) ──
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sf-api
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-stressforge}:${POSTGRES_PASSWORD:-stressforge_pass}@postgres:5432/${POSTGRES_DB:-stressforge_db}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-stressforge-super-secret-key}
+      SEED_ON_STARTUP: "true"
+      SEED_PRODUCTS: "1000"
+    ports:
+      - "8002:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "2.0"
+    restart: unless-stopped
+    networks:
+      - stressforge-net
+
+  # ── Celery Worker (Deployment — stateless) ──
+  worker:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    container_name: sf-worker
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-stressforge}:${POSTGRES_PASSWORD:-stressforge_pass}@postgres:5432/${POSTGRES_DB:-stressforge_db}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    depends_on:
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+    restart: unless-stopped
+    networks:
+      - stressforge-net
+
+  # ── Frontend Dashboard (Deployment — stateless) ──
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sf-frontend
+    ports:
+      - "3001:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "wget", "-qO-", "http://localhost:80/" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.5"
+    restart: unless-stopped
+    networks:
+      - stressforge-net
+
+  # ── Locust Load Generator ──
+  locust:
+    build:
+      context: ./locust
+      dockerfile: Dockerfile
+    container_name: sf-locust
+    ports:
+      - "8090:8089"
+    depends_on:
+      api:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+    restart: unless-stopped
+    networks:
+      - stressforge-net
+
+# ── Volumes (PVC candidates for StatefulSets) ──
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# ── Network ──
+networks:
+  stressforge-net:
+    driver: bridge

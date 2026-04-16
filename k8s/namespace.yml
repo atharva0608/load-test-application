@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: stressforge
+  labels:
+    app.kubernetes.io/name: stressforge
+    app.kubernetes.io/part-of: stressforge
