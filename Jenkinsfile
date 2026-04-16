@@ -24,6 +24,17 @@ pipeline {
             }
         }
 
+        stage('Install Tools') {
+            steps {
+                sh '''
+                if ! command -v yq &> /dev/null; then
+                  wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
+                  chmod +x /usr/local/bin/yq
+                fi
+                '''
+            }
+        }
+
         stage('Build Explicit Images') {
             steps {
                 script {
@@ -78,19 +89,21 @@ pipeline {
                         def prefix = "stressforge"
                         
                         // ONLY push DOCKER_TAG. No :latest tag ever gets pushed from CI in GitOps mode!
-                        sh """set -e
-                            docker tag ${prefix}-api:latest ${API_IMAGE}:${DOCKER_TAG}
-                            docker push ${API_IMAGE}:${DOCKER_TAG}
-                            
-                            docker tag ${prefix}-frontend:latest ${FRONTEND_IMAGE}:${DOCKER_TAG}
-                            docker push ${FRONTEND_IMAGE}:${DOCKER_TAG}
-                            
-                            docker tag ${prefix}-worker:latest ${WORKER_IMAGE}:${DOCKER_TAG}
-                            docker push ${WORKER_IMAGE}:${DOCKER_TAG}
-                            
-                            docker tag ${prefix}-locust:latest ${LOCUST_IMAGE}:${DOCKER_TAG}
-                            docker push ${LOCUST_IMAGE}:${DOCKER_TAG}
-                        """
+                        retry(2) {
+                            sh """set -e
+                                docker tag ${prefix}-api:latest ${API_IMAGE}:${DOCKER_TAG}
+                                docker push ${API_IMAGE}:${DOCKER_TAG}
+                                
+                                docker tag ${prefix}-frontend:latest ${FRONTEND_IMAGE}:${DOCKER_TAG}
+                                docker push ${FRONTEND_IMAGE}:${DOCKER_TAG}
+                                
+                                docker tag ${prefix}-worker:latest ${WORKER_IMAGE}:${DOCKER_TAG}
+                                docker push ${WORKER_IMAGE}:${DOCKER_TAG}
+                                
+                                docker tag ${prefix}-locust:latest ${LOCUST_IMAGE}:${DOCKER_TAG}
+                                docker push ${LOCUST_IMAGE}:${DOCKER_TAG}
+                            """
+                        }
                     }
                 }
             }
