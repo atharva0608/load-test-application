@@ -14,7 +14,6 @@ services:
   # ── PostgreSQL (StatefulSet candidate) ──
   postgres:
     image: postgres:16-alpine
-    container_name: sf-postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-stressforge_db}
       POSTGRES_USER: ${POSTGRES_USER:-stressforge}
@@ -40,7 +39,6 @@ services:
   # ── Redis (StatefulSet candidate) ──
   redis:
     image: redis:7-alpine
-    container_name: sf-redis
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     # No host port — accessed internally via Docker network
     volumes:
@@ -65,7 +63,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: sf-api
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-stressforge}:${POSTGRES_PASSWORD:-stressforge_pass}@postgres:5432/${POSTGRES_DB:-stressforge_db}
       REDIS_URL: redis://redis:6379/0
@@ -101,7 +98,6 @@ services:
     build:
       context: .
       dockerfile: worker/Dockerfile
-    container_name: sf-worker
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-stressforge}:${POSTGRES_PASSWORD:-stressforge_pass}@postgres:5432/${POSTGRES_DB:-stressforge_db}
       REDIS_URL: redis://redis:6379/0
@@ -126,7 +122,6 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: sf-frontend
     ports:
       - "3001:80"
     depends_on:
@@ -152,7 +147,6 @@ services:
     build:
       context: ./locust
       dockerfile: Dockerfile
-    container_name: sf-locust
     ports:
       - "8090:8089"
     depends_on:
