@@ -10,6 +10,7 @@ from app.schemas import HealthResponse, ReadinessResponse
 from app.crud import get_product_count, get_user_count, get_order_count
 import time
 import redis
+import psutil
 
 settings = get_settings()
 router = APIRouter(prefix="/api", tags=["Health"])
@@ -89,3 +90,21 @@ def metrics(db: Session = Depends(get_db)):
             "keys": redis_keys,
         },
     }
+
+@router.get("/metrics/system")
+def system_metrics():
+    """Live system gauges via psutil."""
+    cpu_percent = psutil.cpu_percent(interval=None)
+    memory = psutil.virtual_memory()
+    net = psutil.net_io_counters()
+
+    # Calculate network usage safely if historical data is needed in future
+    return {
+        "cpu_percent": cpu_percent,
+        "ram_percent": memory.percent,
+        "ram_used_mb": memory.used // (1024 * 1024),
+        "ram_total_mb": memory.total // (1024 * 1024),
+        "net_sent_mb": net.bytes_sent // (1024 * 1024),
+        "net_recv_mb": net.bytes_recv // (1024 * 1024)
+    }
+

@@ -331,6 +331,28 @@
                     </div>
                     <div class="stress-result" id="result-mixed"></div>
                 </div>
+
+                <!-- Celery Worker Stress -->
+                <div class="stress-card stress-celery">
+                    <div class="stress-card-header">
+                        <div class="stress-icon-wrap celery" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        </div>
+                        <h3>Worker Stress</h3>
+                    </div>
+                    <p class="stress-desc">Blast Celery with hundreds of background computationally heavy jobs</p>
+                    <div class="stress-controls">
+                        <label class="slider-label">
+                            Tasks/Sec: <span id="celery-intensity-val">30</span>
+                            <input type="range" id="celery-intensity" min="1" max="100" value="30" class="slider" style="accent-color: #8b5cf6" oninput="document.getElementById('celery-intensity-val').textContent=this.value">
+                        </label>
+                        <button class="btn btn-stress btn-celery" style="background:#8b5cf6" onclick="runStress('celery')" id="btn-stress-celery">
+                            <span class="btn-text">Queue Tasks</span>
+                            <span class="btn-spinner hidden"></span>
+                        </button>
+                    </div>
+                    <div class="stress-result" id="result-celery"></div>
+                </div>
             </div>
 
             <!-- Stress Test History -->
@@ -354,7 +376,41 @@
             </div>
 
             <div class="metrics-grid" id="metrics-grid">
-                <div class="loading-skeleton">Loading metrics...</div>
+                <!-- System Gauges -->
+                <div class="card gauge-card">
+                    <div class="card-header">
+                        <h3 class="card-title">Live Server Hardware Usage</h3>
+                    </div>
+                    <div style="display:flex; justify-content:space-around; padding: 2rem 0;">
+                        <div class="gauge-container" style="text-align:center">
+                            <svg width="120" height="120" viewBox="0 0 120 120" class="circular-chart">
+                                <path class="circle-bg" d="M18 60 a 42 42 0 1 1 84 0 a 42 42 0 1 1 -84 0" fill="none" stroke="#e2e8f0" stroke-width="12"/>
+                                <path class="circle-fg" id="gauge-cpu" stroke-dasharray="0, 264" d="M18 60 a 42 42 0 1 1 84 0 a 42 42 0 1 1 -84 0" fill="none" stroke="#ef4444" stroke-width="12" stroke-linecap="round"/>
+                            </svg>
+                            <div style="font-weight:700; font-size:1.5rem; margin-top:1rem;" id="txt-cpu">0%</div>
+                            <div class="text-muted">CPU Usage</div>
+                        </div>
+                        <div class="gauge-container" style="text-align:center">
+                            <svg width="120" height="120" viewBox="0 0 120 120" class="circular-chart">
+                                <path class="circle-bg" d="M18 60 a 42 42 0 1 1 84 0 a 42 42 0 1 1 -84 0" fill="none" stroke="#e2e8f0" stroke-width="12"/>
+                                <path class="circle-fg" id="gauge-ram" stroke-dasharray="0, 264" d="M18 60 a 42 42 0 1 1 84 0 a 42 42 0 1 1 -84 0" fill="none" stroke="#3b82f6" stroke-width="12" stroke-linecap="round"/>
+                            </svg>
+                            <div style="font-weight:700; font-size:1.5rem; margin-top:1rem;" id="txt-ram">0%</div>
+                            <div class="text-muted" id="txt-ram-raw">0MB / 0MB</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Log Console -->
+                <div class="card log-card" style="grid-column: 1 / -1; background:#0f172a; color:#cbd5e1;">
+                    <div class="card-header" style="border-bottom:1px solid #334155">
+                        <h3 class="card-title" style="color:#f8fafc">Server Stress Execution Logs</h3>
+                        <span class="badge badge-live" style="background:#10b98122; color:#10b981">● POLLING</span>
+                    </div>
+                    <div class="console-output" id="live-console" style="height: 250px; overflow-y:auto; padding:1rem; font-family:'JetBrains Mono', monospace; font-size:0.875rem;">
+                        <div style="color:#64748b">> Server ready. Awaiting load test events...</div>
+                    </div>
+                </div>
             </div>
         </section>
     </main>

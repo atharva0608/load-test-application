@@ -10,8 +10,15 @@ import hashlib
 import random
 import os
 import tempfile
+from celery import Celery
 
 router = APIRouter(prefix="/api/stress", tags=["Stress Testing"])
+
+# Connect to the Redis broker purely to dispatch messages
+celery_app = Celery(
+    "stressforge_api",
+    broker=os.getenv("CELERY_BROKER_URL", "redis://redis:6379/1"),
+)
 
 
 def fibonacci(n: int) -> int:
@@ -78,7 +85,7 @@ def stress_cpu(data: StressRequest):
         type="cpu",
         intensity=intensity,
         duration_ms=round(duration_ms, 2),
-        result=f"fib({fib_n})={str(fib_result)[:20]}...",
+        result=f"fib({fib_n}) computed: {fib_result.bit_length()} bits long.",
         details={
             "fibonacci_n": fib_n,
             "matrix_size": f"{matrix_size}x{matrix_size}",
@@ -150,11 +157,12 @@ def stress_io(data: StressRequest, db: Session = Depends(get_db)):
     # DB queries
     db_queries = intensity * 5
     for i in range(db_queries):
-        db.execute(
+        res = db.execute(
             __import__("sqlalchemy").text(
-                "SELECT * FROM products ORDER BY RANDOM() LIMIT 10"
+                "SELECT id FROM products LIMIT 10"
             )
         )
+        res.fetchall()
 
     # File I/O
     file_ops = intensity * 2
@@ -218,12 +226,13 @@ def stress_mixed(data: StressRequest, db: Session = Depends(get_db)):
     # I/O: DB queries
     db_queries = intensity * 2
     for _ in range(db_queries):
-        db.execute(
+        res = db.execute(
             __import__("sqlalchemy").text(
                 "SELECT COUNT(*) FROM products WHERE price > :price"
             ),
             {"price": random.uniform(10, 500)},
         )
+        res.fetchall()
 
     # Cleanup
     del chunks
@@ -234,7 +243,7 @@ def stress_mixed(data: StressRequest, db: Session = Depends(get_db)):
         type="mixed",
         intensity=intensity,
         duration_ms=round(duration_ms, 2),
-        result=f"CPU+Memory+IO combined at intensity {intensity}",
+        result=f"CPU+Memory+IO combined at intensity {intensity} | Fib: {fib_result.bit_length()} bits",
         details={
             "fibonacci_n": 500 * intensity,
             "hash_chains": hash_count,
@@ -242,3 +251,38 @@ def stress_mixed(data: StressRequest, db: Session = Depends(get_db)):
             "db_queries": db_queries,
         },
     )
+
+@router.post("/celery", response_model=StressResponse)
+def stress_celery(data: StressRequest):
+    """
+    Celery Worker workload:
+    - Dispatches async jobs to the Redis broker.
+    - Simulates heavy background worker queue pressure.
+    """
+    start = time.time()
+    intensity = data.intensity
+    
+    tasks_to_spawn = intensity * 2
+    task_ids = []
+    
+    for _ in range(tasks_to_spawn):
+        # Fire-and-forget task dispatch
+        result = celery_app.send_task(
+            name="worker.tasks.heavy_computation",
+            kwargs={"intensity": intensity}
+        )
+        task_ids.append(result.id)
+
+    duration_ms = (time.time() - start) * 1000
+
+    return StressResponse(
+        type="celery",
+        intensity=intensity,
+        duration_ms=round(duration_ms, 2),
+        result=f"Queued {tasks_to_spawn} heavy_computation tasks successfully",
+        details={
+            "tasks_spawned": tasks_to_spawn,
+            "broker": celery_app.conf.broker_url
+        },
+    )
+

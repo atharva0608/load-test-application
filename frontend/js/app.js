@@ -595,6 +595,7 @@ async function runStress(type) {
         memory: 'mem-intensity',
         io: 'io-intensity',
         mixed: 'mixed-intensity',
+        celery: 'celery-intensity',
     };
 
     const btnMap = {
@@ -602,6 +603,7 @@ async function runStress(type) {
         memory: 'btn-stress-mem',
         io: 'btn-stress-io',
         mixed: 'btn-stress-mixed',
+        celery: 'btn-stress-celery',
     };
 
     const intensity = parseInt(document.getElementById(intensityMap[type]).value);
@@ -643,10 +645,12 @@ async function runStress(type) {
         renderStressHistory();
 
         showToast(`${type.toUpperCase()} stress: ${data.duration_ms.toFixed(0)}ms`, 'success');
+        appendLog(`[${type.toUpperCase()}] Success. RTT: ${clientTime}ms, Server: ${data.duration_ms.toFixed(1)}ms. Response: ${data.result}`);
     } catch (err) {
         resultDiv.innerHTML = `<strong>❌ Error:</strong> ${escapeHtml(err.message)}`;
         resultDiv.classList.add('visible');
         showToast(`Stress test failed: ${err.message}`, 'error');
+        appendLog(`[${type.toUpperCase()}] ERROR: ${err.message}`, 'error');
     } finally {
         btn.disabled = false;
         if (btnText) btnText.textContent = 'Execute';
@@ -728,15 +732,65 @@ async function refreshMetrics() {
             </div>
         `;
     } catch (err) {
-        grid.innerHTML = `<div class="empty-state">Error loading metrics: ${escapeHtml(err.message)}</div>`;
+        // Only show error text if elements didn't initialize
     }
+}
+
+function updateGauge(id, percent) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    // 264 is the total dash array for our SVG layout
+    const offset = 264 - (percent / 100) * 264;
+    el.style.strokeDashoffset = offset;
+}
+
+async function fetchSystemMetrics() {
+    try {
+        const sys = await apiCall('/metrics/system');
+        
+        // Update Gauges
+        updateGauge('gauge-cpu', sys.cpu_percent);
+        updateGauge('gauge-ram', sys.ram_percent);
+        
+        const txtCpu = document.getElementById('txt-cpu');
+        const txtRam = document.getElementById('txt-ram');
+        const txtRamRaw = document.getElementById('txt-ram-raw');
+        
+        if (txtCpu) txtCpu.textContent = `${sys.cpu_percent.toFixed(1)}%`;
+        if (txtRam) txtRam.textContent = `${sys.ram_percent.toFixed(1)}%`;
+        if (txtRamRaw) txtRamRaw.textContent = `${sys.ram_used_mb}MB / ${sys.ram_total_mb}MB`;
+
+    } catch (err) {
+        console.warn('System metrics unavailable');
+    }
+}
+
+function appendLog(msg, type = 'info') {
+    const consoleEl = document.getElementById('live-console');
+    if (!consoleEl) return;
+    
+    const div = document.createElement('div');
+    const timeInfo = new Date().toLocaleTimeString();
+    
+    if (type === 'error') {
+        div.style.color = '#ef4444';
+        div.textContent = `[${timeInfo}] ❌ ${msg}`;
+    } else {
+        div.style.color = '#10b981';
+        div.textContent = `[${timeInfo}] ✅ ${msg}`;
+    }
+    
+    consoleEl.appendChild(div);
+    consoleEl.scrollTop = consoleEl.scrollHeight;
 }
 
 function startMetricsPolling() {
     // Collect chart data every 3 seconds
     collectChartPoint();
+    fetchSystemMetrics();
     metricsInterval = setInterval(() => {
         collectChartPoint();
+        fetchSystemMetrics();
         if (currentTab === 'dashboard') {
             loadDashboard();
             checkApiStatus();
