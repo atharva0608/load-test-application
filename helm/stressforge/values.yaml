@@ -1,0 +1,12 @@
+# Default values for stressforge.
+# This is a YAML-formatted file.
+
+image:
+  registry: atharvapudale
+  tags:
+    api: "1.0.0"       # Jenkins will update these tags
+    frontend: "1.0.0"
+    worker: "1.0.0"
+    locust: "1.0.0"
+
+# Future configurations (secrets, replicas, etc.) could be added here

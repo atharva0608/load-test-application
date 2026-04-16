@@ -50,7 +50,7 @@ spec:
     spec:
       containers:
         - name: api
-          image: stressforge/api:latest
+          image: "{{ .Values.image.registry }}/stressforge-api:{{ .Values.image.tags.api }}"
           ports:
             - containerPort: 8000
               name: http

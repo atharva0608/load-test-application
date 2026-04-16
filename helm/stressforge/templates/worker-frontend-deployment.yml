@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: stressforge/worker:latest
+          image: "{{ .Values.image.registry }}/stressforge-worker:{{ .Values.image.tags.worker }}"
           envFrom:
             - configMapRef:
                 name: api-config
@@ -57,7 +57,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: stressforge/frontend:latest
+          image: "{{ .Values.image.registry }}/stressforge-frontend:{{ .Values.image.tags.frontend }}"
           ports:
             - containerPort: 80
               name: http
