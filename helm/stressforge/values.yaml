@@ -4,8 +4,8 @@
 image:
   registry: atharva608
   tags:
-    api: "26"
-    frontend: "26"
-    worker: "26"
-    locust: "26"
+    api: "27"
+    frontend: "27"
+    worker: "27"
+    locust: "27"
 # Future configurations (secrets, replicas, etc.) could be added here
