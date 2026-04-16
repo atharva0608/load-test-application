@@ -19,7 +19,8 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                checkout scm
+                // Explicit Git checkout using the correct credentials id
+                git branch: 'main', credentialsId: 'Github-Ecc', url: 'https://github.com/atharva0608/load-test-application.git'
             }
         }
 
@@ -70,7 +71,7 @@ pipeline {
                 script {
                     echo "Tagging and pushing images to Docker Hub (STRICT VERSION TAGS ONLY)..."
                     
-                    withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
+                    withCredentials([usernamePassword(credentialsId: 'Docker-hub-ecc', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
                         sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
                         
                         // We use the enforced prefix "stressforge" instead of relying on default folder names
@@ -112,13 +113,13 @@ pipeline {
                     
                     // Uses Jenkins' local SSH or PAT context if cloned securely. 
                     // Set up Jenkins Git config so commits succeed.
-                    withCredentials([usernamePassword(credentialsId: 'github-pat', passwordVariable: 'GIT_PAT', usernameVariable: 'GIT_USER')]) {
+                    withCredentials([usernamePassword(credentialsId: 'Github-Ecc', passwordVariable: 'GIT_PAT', usernameVariable: 'GIT_USER')]) {
                         sh '''
                             git config --global user.email "jenkins-ci@stressforge.io"
                             git config --global user.name "Jenkins CI"
                             
-                            # Checkout fresh staging branch, or switch to it if it exists
-                            git checkout -B staging
+                            # Safely checkout staging branch without overwriting changes
+                            git checkout staging || git checkout -b staging
                             git add helm/stressforge/values.yaml
                             
                             # Only commit if there are changes
