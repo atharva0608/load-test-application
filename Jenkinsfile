@@ -228,17 +228,21 @@ pipeline {
                         sh '''
                             git config --global user.email "jenkins-ci@stressforge.io"
                             git config --global user.name "Jenkins CI"
-                            
+
+                            # Prevent git from hanging waiting for interactive credential prompt
+                            export GIT_TERMINAL_PROMPT=0
+
+                            # Embed credentials in remote URL before any network operation
+                            git remote set-url origin https://${GIT_USER}:${GIT_PAT}@github.com/atharva0608/load-test-application.git
+
                             # Safely fetch and checkout staging branch against origin state
                             git fetch origin
                             git checkout staging || git checkout -b staging origin/staging
                             git add helm/stressforge/values.yaml
-                            
+
                             # Only commit if there are changes
                             git diff-index --quiet HEAD || git commit -m "ci: bump helm image tags to build ${DOCKER_TAG}"
-                            
-                            # Push using the credentials
-                            git remote set-url origin https://${GIT_USER}:${GIT_PAT}@github.com/atharva0608/load-test-application.git
+
                             git push -u origin staging
                         '''
                     }
