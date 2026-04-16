@@ -214,6 +214,7 @@ pipeline {
                     // We use yq to safely update the tags inside the Helm values file.
                     // This creates an auditable commit for ArgoCD.
                     sh """set -e
+                        yq e '.image.registry = "${DOCKER_HUB_USER}"' -i helm/stressforge/values.yaml
                         yq e '.image.tags.api = "${DOCKER_TAG}"' -i helm/stressforge/values.yaml
                         yq e '.image.tags.frontend = "${DOCKER_TAG}"' -i helm/stressforge/values.yaml
                         yq e '.image.tags.worker = "${DOCKER_TAG}"' -i helm/stressforge/values.yaml

@@ -2,9 +2,9 @@
 # This is a YAML-formatted file.
 
 image:
-  registry: atharvapudale
+  registry: atharva608
   tags:
-    api: "23" # Jenkins will update these tags
+    api: "23"
     frontend: "23"
     worker: "23"
     locust: "23"
