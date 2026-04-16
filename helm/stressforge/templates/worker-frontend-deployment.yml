@@ -82,6 +82,8 @@ spec:
             periodSeconds: 5
 ---
 # Frontend Service
+# Exposed externally via: http://stressforge.local (path: /)
+# Traffic path: NLB → nginx Ingress Controller → this ClusterIP service
 apiVersion: v1
 kind: Service
 metadata:

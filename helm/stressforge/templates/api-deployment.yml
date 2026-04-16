@@ -91,6 +91,8 @@ spec:
             failureThreshold: 30
 ---
 # API Service
+# Exposed externally via: http://stressforge.local/api
+# Traffic path: NLB → nginx Ingress Controller → this ClusterIP service
 apiVersion: v1
 kind: Service
 metadata:
