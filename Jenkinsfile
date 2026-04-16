@@ -74,22 +74,45 @@ pipeline {
                 fi
 
                 # ----------------------------
-                # Install Docker Compose v2
+                # Detect Architecture
                 # ----------------------------
-                if ! docker compose version >/dev/null 2>&1; then
-                  echo "Installing Docker Compose plugin..."
-                  mkdir -p /usr/libexec/docker/cli-plugins
-                  curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 \
-                    -o /usr/libexec/docker/cli-plugins/docker-compose
-                  chmod +x /usr/libexec/docker/cli-plugins/docker-compose
+                ARCH=$(uname -m)
+                if [ "$ARCH" = "x86_64" ]; then
+                    COMPOSE_ARCH="x86_64"
+                    BUILDX_ARCH="amd64"
+                    YQ_ARCH="amd64"
+                elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+                    COMPOSE_ARCH="aarch64"
+                    BUILDX_ARCH="arm64"
+                    YQ_ARCH="arm64"
+                else
+                    echo "❌ Unsupported architecture: $ARCH"
+                    exit 1
                 fi
+
+                # ----------------------------
+                # Install Docker Compose v2 plugin natively
+                # ----------------------------
+                mkdir -p /usr/libexec/docker/cli-plugins
+                echo "Installing Docker Compose plugin ($COMPOSE_ARCH)..."
+                curl -SL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-${COMPOSE_ARCH}" \
+                  -o /usr/libexec/docker/cli-plugins/docker-compose
+                chmod +x /usr/libexec/docker/cli-plugins/docker-compose
+
+                # ----------------------------
+                # Install Docker Buildx plugin natively (Required >=0.17 for compose build)
+                # ----------------------------
+                echo "Installing Docker Buildx plugin ($BUILDX_ARCH)..."
+                curl -SL "https://github.com/docker/buildx/releases/download/v0.19.1/buildx-v0.19.1.linux-${BUILDX_ARCH}" \
+                  -o /usr/libexec/docker/cli-plugins/docker-buildx
+                chmod +x /usr/libexec/docker/cli-plugins/docker-buildx
 
                 # ----------------------------
                 # Install yq
                 # ----------------------------
                 if ! command -v yq >/dev/null 2>&1; then
-                  echo "Installing yq..."
-                  curl -SL https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 \
+                  echo "Installing yq ($YQ_ARCH)..."
+                  curl -SL "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${YQ_ARCH}" \
                     -o /usr/local/bin/yq
                   chmod +x /usr/local/bin/yq
                 fi
