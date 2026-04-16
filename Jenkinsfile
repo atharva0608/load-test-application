@@ -20,7 +20,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 // Explicit Git checkout using the correct credentials id
-                git branch: 'main', credentialsId: 'Github-Ecc', url: 'https://github.com/atharva0608/load-test-application.git'
+                git branch: 'staging', credentialsId: 'Github-Ecc', url: 'https://github.com/atharva0608/load-test-application.git'
             }
         }
 
@@ -78,17 +78,19 @@ pipeline {
                         def prefix = "stressforge"
                         
                         // ONLY push DOCKER_TAG. No :latest tag ever gets pushed from CI in GitOps mode!
-                        sh "docker tag ${prefix}-api:latest ${API_IMAGE}:${DOCKER_TAG}"
-                        sh "docker push ${API_IMAGE}:${DOCKER_TAG}"
-                        
-                        sh "docker tag ${prefix}-frontend:latest ${FRONTEND_IMAGE}:${DOCKER_TAG}"
-                        sh "docker push ${FRONTEND_IMAGE}:${DOCKER_TAG}"
-                        
-                        sh "docker tag ${prefix}-worker:latest ${WORKER_IMAGE}:${DOCKER_TAG}"
-                        sh "docker push ${WORKER_IMAGE}:${DOCKER_TAG}"
-                        
-                        sh "docker tag ${prefix}-locust:latest ${LOCUST_IMAGE}:${DOCKER_TAG}"
-                        sh "docker push ${LOCUST_IMAGE}:${DOCKER_TAG}"
+                        sh """set -e
+                            docker tag ${prefix}-api:latest ${API_IMAGE}:${DOCKER_TAG}
+                            docker push ${API_IMAGE}:${DOCKER_TAG}
+                            
+                            docker tag ${prefix}-frontend:latest ${FRONTEND_IMAGE}:${DOCKER_TAG}
+                            docker push ${FRONTEND_IMAGE}:${DOCKER_TAG}
+                            
+                            docker tag ${prefix}-worker:latest ${WORKER_IMAGE}:${DOCKER_TAG}
+                            docker push ${WORKER_IMAGE}:${DOCKER_TAG}
+                            
+                            docker tag ${prefix}-locust:latest ${LOCUST_IMAGE}:${DOCKER_TAG}
+                            docker push ${LOCUST_IMAGE}:${DOCKER_TAG}
+                        """
                     }
                 }
             }
@@ -99,14 +101,13 @@ pipeline {
                 script {
                     echo "Modifying Helm values.yaml with newly built image tag: ${DOCKER_TAG}"
                     
-                    // We use basic sed substitution to update the tags inside the Helm values file.
+                    // We use yq to safely update the tags inside the Helm values file.
                     // This creates an auditable commit for ArgoCD.
-                    sh """
-                        sed -i.bak 's/api: ".*"/api: "${DOCKER_TAG}"/' helm/stressforge/values.yaml
-                        sed -i.bak 's/frontend: ".*"/frontend: "${DOCKER_TAG}"/' helm/stressforge/values.yaml
-                        sed -i.bak 's/worker: ".*"/worker: "${DOCKER_TAG}"/' helm/stressforge/values.yaml
-                        sed -i.bak 's/locust: ".*"/locust: "${DOCKER_TAG}"/' helm/stressforge/values.yaml
-                        rm -f helm/stressforge/values.yaml.bak
+                    sh """set -e
+                        yq e '.image.tags.api = "${DOCKER_TAG}"' -i helm/stressforge/values.yaml
+                        yq e '.image.tags.frontend = "${DOCKER_TAG}"' -i helm/stressforge/values.yaml
+                        yq e '.image.tags.worker = "${DOCKER_TAG}"' -i helm/stressforge/values.yaml
+                        yq e '.image.tags.locust = "${DOCKER_TAG}"' -i helm/stressforge/values.yaml
                     """
                     
                     echo "Committing Helm change to 'staging' branch..."
@@ -118,8 +119,9 @@ pipeline {
                             git config --global user.email "jenkins-ci@stressforge.io"
                             git config --global user.name "Jenkins CI"
                             
-                            # Safely checkout staging branch without overwriting changes
-                            git checkout staging || git checkout -b staging
+                            # Safely fetch and checkout staging branch against origin state
+                            git fetch origin
+                            git checkout staging || git checkout -b staging origin/staging
                             git add helm/stressforge/values.yaml
                             
                             # Only commit if there are changes
@@ -136,6 +138,9 @@ pipeline {
     }
 
     post {
+        always {
+            sh 'docker system prune -f'
+        }
         failure {
             echo "❌ Pipeline Failed! Check logs for details."
         }
