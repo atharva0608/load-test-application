@@ -4,9 +4,8 @@
 image:
   registry: atharvapudale
   tags:
-    api: "1.0.0"       # Jenkins will update these tags
-    frontend: "1.0.0"
-    worker: "1.0.0"
-    locust: "1.0.0"
-
+    api: "23" # Jenkins will update these tags
+    frontend: "23"
+    worker: "23"
+    locust: "23"
 # Future configurations (secrets, replicas, etc.) could be added here
