@@ -1,0 +1,68 @@
+---
+# Locust Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: locust
+  namespace: stressforge
+  labels:
+    app: locust
+    tier: loadtest
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: locust
+  template:
+    metadata:
+      labels:
+        app: locust
+        tier: loadtest
+    spec:
+      containers:
+        - name: locust
+          image: "{{ .Values.image.registry }}/stressforge-locust:{{ .Values.image.tags.locust }}"
+          ports:
+            - containerPort: 8089
+              name: web
+          env:
+            - name: LOCUST_HOST
+              value: "http://api:8000"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8089
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8089
+            initialDelaySeconds: 5
+            periodSeconds: 5
+---
+# Locust Service
+# Exposed externally via: http://locust.local
+# Traffic path: NLB → nginx Ingress Controller → this ClusterIP service
+apiVersion: v1
+kind: Service
+metadata:
+  name: locust
+  namespace: stressforge
+  labels:
+    app: locust
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8089
+      targetPort: 8089
+      name: web
+  selector:
+    app: locust
