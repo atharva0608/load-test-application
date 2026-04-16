@@ -180,26 +180,26 @@ pipeline {
                     echo "Tagging and pushing images to Docker Hub (STRICT VERSION TAGS ONLY)..."
                     
                     withCredentials([usernamePassword(credentialsId: 'Docker-hub-ecc', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
-                        sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
-                        
-                        // We use the enforced prefix "stressforge" instead of relying on default folder names
+                        // Login is inside retry so each attempt re-authenticates with a fresh session
                         def prefix = "stressforge"
-                        
-                        // ONLY push DOCKER_TAG. No :latest tag ever gets pushed from CI in GitOps mode!
-                        retry(2) {
-                            sh """set -e
-                                docker tag ${prefix}-api:latest ${API_IMAGE}:${DOCKER_TAG}
-                                docker push ${API_IMAGE}:${DOCKER_TAG}
-                                
-                                docker tag ${prefix}-frontend:latest ${FRONTEND_IMAGE}:${DOCKER_TAG}
-                                docker push ${FRONTEND_IMAGE}:${DOCKER_TAG}
-                                
-                                docker tag ${prefix}-worker:latest ${WORKER_IMAGE}:${DOCKER_TAG}
-                                docker push ${WORKER_IMAGE}:${DOCKER_TAG}
-                                
-                                docker tag ${prefix}-locust:latest ${LOCUST_IMAGE}:${DOCKER_TAG}
-                                docker push ${LOCUST_IMAGE}:${DOCKER_TAG}
-                            """
+                        def images = [
+                            [local: "${prefix}-api",      remote: "${API_IMAGE}"],
+                            [local: "${prefix}-frontend",  remote: "${FRONTEND_IMAGE}"],
+                            [local: "${prefix}-worker",    remote: "${WORKER_IMAGE}"],
+                            [local: "${prefix}-locust",    remote: "${LOCUST_IMAGE}"]
+                        ]
+
+                        // Authenticate once per pipeline run
+                        sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
+
+                        // Push each image independently so a retry only re-pushes the failed image
+                        images.each { img ->
+                            retry(2) {
+                                sh """set -e
+                                    docker tag ${img.local}:latest ${img.remote}:${DOCKER_TAG}
+                                    docker push ${img.remote}:${DOCKER_TAG}
+                                """
+                            }
                         }
                     }
                 }
