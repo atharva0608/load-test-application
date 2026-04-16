@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         // Core configuration
-        DOCKER_HUB_USER = 'atharvapudale'
+        DOCKER_HUB_USER = 'atharva608'
         APP_NAME = 'stressforge'
         // STRICT GIT-OPS: We only use the deterministic Jenkins BUILD_NUMBER as our tag. 
         // No 'latest' tags are pushed to avoid untraceable config drift.
@@ -191,22 +191,6 @@ pipeline {
 
                         // Authenticate once per pipeline run
                         sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
-                        
-                        // Diagnostic: verify token has push scope against Docker Hub API
-                        sh '''
-                            TOKEN=$(echo "$DOCKER_PASS" | base64 | tr -d "\n" 2>/dev/null || echo "$DOCKER_PASS")
-                            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-                                -H "Authorization: Bearer $(curl -s -f \
-                                    "https://auth.docker.io/token?service=registry.docker.io&scope=repository:${DOCKER_USER}/stressforge-api:push,pull" \
-                                    -u "$DOCKER_USER:$DOCKER_PASS" | python3 -c "import sys,json; print(json.load(sys.stdin)[\'token\'])")" \
-                                "https://registry-1.docker.io/v2/${DOCKER_USER}/stressforge-api/tags/list")
-                            echo "Registry auth check HTTP status: $HTTP_STATUS"
-                            if [ "$HTTP_STATUS" = "401" ] || [ "$HTTP_STATUS" = "403" ]; then
-                                echo "❌ Token does NOT have push access - update Jenkins credential Docker-hub-ecc"
-                                exit 1
-                            fi
-                            echo "✅ Token scope verified for push"
-                        '''
 
                         // Push each image independently so a retry only re-pushes the failed image
                         images.each { img ->
