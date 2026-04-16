@@ -134,8 +134,7 @@ pipeline {
         stage('Build Explicit Images') {
             steps {
                 script {
-                    echo "Building images with fixed project name to avoid fragile directory dependency..."
-                    // Fixing fragile directory prefix by explicitly forcing the Compose project name
+                    echo "Building single-platform image for integration tests..."
                     sh 'docker compose -p stressforge build'
                 }
             }
@@ -174,30 +173,37 @@ pipeline {
             }
         }
 
-        stage('Push Versioned Tags Only') {
+        stage('Push Multi-Arch Versioned Tags') {
             steps {
                 script {
-                    echo "Tagging and pushing images to Docker Hub (STRICT VERSION TAGS ONLY)..."
-                    
-                    withCredentials([usernamePassword(credentialsId: 'Docker-hub-ecc', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
-                        // Login is inside retry so each attempt re-authenticates with a fresh session
-                        def prefix = "stressforge"
-                        def images = [
-                            [local: "${prefix}-api",      remote: "${API_IMAGE}"],
-                            [local: "${prefix}-frontend",  remote: "${FRONTEND_IMAGE}"],
-                            [local: "${prefix}-worker",    remote: "${WORKER_IMAGE}"],
-                            [local: "${prefix}-locust",    remote: "${LOCUST_IMAGE}"]
-                        ]
+                    echo "Building multi-arch (amd64+arm64) and pushing to Docker Hub..."
 
-                        // Authenticate once per pipeline run
+                    withCredentials([usernamePassword(credentialsId: 'Docker-hub-ecc', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
                         sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
 
-                        // Push each image independently so a retry only re-pushes the failed image
-                        images.each { img ->
+                        // Create/use a multi-arch buildx builder
+                        sh '''
+                            docker buildx inspect multiarch-builder > /dev/null 2>&1 \
+                                || docker buildx create --name multiarch-builder --driver docker-container --bootstrap
+                            docker buildx use multiarch-builder
+                        '''
+
+                        def services = [
+                            [context: 'backend',  dockerfile: 'backend/Dockerfile',  image: "${API_IMAGE}:${DOCKER_TAG}"],
+                            [context: 'frontend', dockerfile: 'frontend/Dockerfile', image: "${FRONTEND_IMAGE}:${DOCKER_TAG}"],
+                            [context: '.',        dockerfile: 'worker/Dockerfile',   image: "${WORKER_IMAGE}:${DOCKER_TAG}"],
+                            [context: 'locust',   dockerfile: 'locust/Dockerfile',   image: "${LOCUST_IMAGE}:${DOCKER_TAG}"]
+                        ]
+
+                        services.each { svc ->
                             retry(2) {
                                 sh """set -e
-                                    docker tag ${img.local}:latest ${img.remote}:${DOCKER_TAG}
-                                    docker push ${img.remote}:${DOCKER_TAG}
+                                    docker buildx build \\
+                                        --platform linux/amd64,linux/arm64 \\
+                                        --push \\
+                                        -t ${svc.image} \\
+                                        -f ${svc.dockerfile} \\
+                                        ${svc.context}
                                 """
                             }
                         }
