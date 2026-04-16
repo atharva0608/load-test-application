@@ -24,13 +24,84 @@ pipeline {
             }
         }
 
-        stage('Install Tools') {
+        stage('Bootstrap Tools') {
             steps {
                 sh '''
-                if ! command -v yq &> /dev/null; then
-                  wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
+                set -e
+
+                echo "🔧 Bootstrapping CI tools..."
+
+                # ----------------------------
+                # Ensure we are root
+                # ----------------------------
+                if [ "$(id -u)" -ne 0 ]; then
+                  echo "❌ Must run as root to install dependencies"
+                  exit 1
+                fi
+
+                # ----------------------------
+                # Install base tools
+                # ----------------------------
+                if ! command -v curl >/dev/null 2>&1; then
+                  echo "Installing curl..."
+                  apt-get update
+                  apt-get install -y curl
+                fi
+
+                if ! command -v git >/dev/null 2>&1; then
+                  echo "Installing git..."
+                  apt-get update
+                  apt-get install -y git
+                fi
+
+                # ----------------------------
+                # Install Docker CLI (fallback)
+                # ----------------------------
+                if ! command -v docker >/dev/null 2>&1; then
+                  echo "Installing Docker CLI..."
+                  apt-get update
+                  apt-get install -y docker.io
+                fi
+
+                # ----------------------------
+                # Verify Docker daemon access
+                # ----------------------------
+                if ! docker ps >/dev/null 2>&1; then
+                  echo "❌ Docker daemon not accessible"
+                  exit 1
+                fi
+
+                # ----------------------------
+                # Install Docker Compose v2
+                # ----------------------------
+                if ! docker compose version >/dev/null 2>&1; then
+                  echo "Installing Docker Compose plugin..."
+                  mkdir -p /usr/libexec/docker/cli-plugins
+                  curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 \
+                    -o /usr/libexec/docker/cli-plugins/docker-compose
+                  chmod +x /usr/libexec/docker/cli-plugins/docker-compose
+                fi
+
+                # ----------------------------
+                # Install yq
+                # ----------------------------
+                if ! command -v yq >/dev/null 2>&1; then
+                  echo "Installing yq..."
+                  curl -SL https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 \
+                    -o /usr/local/bin/yq
                   chmod +x /usr/local/bin/yq
                 fi
+
+                echo "✅ All tools ready"
+
+                # ----------------------------
+                # Print versions (debug)
+                # ----------------------------
+                docker --version
+                docker compose version
+                yq --version
+                git --version
+                curl --version
                 '''
             }
         }
