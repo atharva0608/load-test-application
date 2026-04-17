@@ -33,7 +33,8 @@ metadata:
     app: api
     tier: backend
 spec:
-  replicas: 2
+  # replicas intentionally omitted — HPA owns the replica count.
+  # Setting it here causes ArgoCD to fight HPA in a sync loop.
   strategy:
     type: RollingUpdate
     rollingUpdate:
