@@ -1,5 +1,5 @@
 """
-StressForge ORM Models — User, Product, Order, OrderItem.
+StressForge ORM Models — User, Product, Order, OrderItem, UptimeEvent, Incident, TestRun.
 """
 from sqlalchemy import (
     Column, Integer, String, Float, Text, DateTime, ForeignKey, JSON, Boolean, Index
@@ -74,3 +74,83 @@ class OrderItem(Base):
 
     order = relationship("Order", back_populates="items")
     product = relationship("Product", back_populates="order_items")
+
+
+# ── Uptime Monitoring Models ─────────────────────────
+
+class UptimeEvent(Base):
+    """Records individual health check heartbeats."""
+    __tablename__ = "uptime_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    endpoint = Column(String(500), nullable=False, index=True)
+    status = Column(String(50), nullable=False, index=True)  # healthy, degraded, down
+    latency_ms = Column(Float, default=0.0)
+    pod_name = Column(String(255))
+    error_reason = Column(Text)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+    __table_args__ = (
+        Index("ix_uptime_events_endpoint_time", "endpoint", "timestamp"),
+    )
+
+
+class Incident(Base):
+    """Records service incidents (3+ consecutive failures)."""
+    __tablename__ = "incidents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    endpoint = Column(String(500), nullable=False)
+    started_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    resolved_at = Column(DateTime(timezone=True))
+    duration_seconds = Column(Float)
+    cause = Column(Text)
+    affected_endpoints = Column(JSON)
+
+    __table_args__ = (
+        Index("ix_incidents_started", "started_at"),
+    )
+
+
+# ── Test Run Persistence ──────────────────────────────
+
+class TestRun(Base):
+    """Persists load test scenario runs for history and comparison."""
+    __tablename__ = "test_runs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    scenario_name = Column(String(255), nullable=False, index=True)
+    status = Column(String(50), default="running", index=True)  # running, completed, failed, cancelled
+    config_json = Column(JSON)
+    summary_json = Column(JSON)
+    started_at = Column(DateTime(timezone=True), server_default=func.now())
+    ended_at = Column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_test_runs_scenario", "scenario_name", "started_at"),
+    )
+
+
+# ── Slow Request Tracking ─────────────────────────────
+
+class SlowRequest(Base):
+    """Records requests exceeding the latency threshold for inspection."""
+    __tablename__ = "slow_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    endpoint = Column(String(500), nullable=False, index=True)
+    method = Column(String(10), nullable=False)
+    duration_ms = Column(Float, nullable=False, index=True)
+    db_query_count = Column(Integer, default=0)
+    db_total_ms = Column(Float, default=0.0)
+    redis_hit = Column(Boolean)
+    payload_size = Column(Integer, default=0)
+    status_code = Column(Integer)
+    user_agent = Column(String(500))
+    request_id = Column(String(50))
+    timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+    __table_args__ = (
+        Index("ix_slow_requests_endpoint_time", "endpoint", "timestamp"),
+    )
+

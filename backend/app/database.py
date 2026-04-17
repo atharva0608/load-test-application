@@ -35,3 +35,16 @@ def init_db():
     """Create all tables."""
     from app import models  # noqa: F401 — ensure models are imported
     Base.metadata.create_all(bind=engine)
+
+
+def get_pool_status() -> dict:
+    """Introspect SQLAlchemy connection pool status."""
+    pool = engine.pool
+    return {
+        "pool_size": pool.size(),
+        "checked_out": pool.checkedout(),
+        "checked_in": pool.checkedin(),
+        "overflow": pool.overflow(),
+        "max_overflow": pool._max_overflow,
+        "timeout": int(pool._timeout),
+    }

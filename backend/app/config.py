@@ -8,7 +8,7 @@ from functools import lru_cache
 class Settings(BaseSettings):
     # App
     APP_NAME: str = "StressForge"
-    APP_VERSION: str = "1.0.0"
+    APP_VERSION: str = "3.0.0"
     DEBUG: bool = False
 
     # Database
@@ -29,6 +29,15 @@ class Settings(BaseSettings):
     # Seed
     SEED_PRODUCTS: int = 1000
     SEED_ON_STARTUP: bool = True
+
+    # Performance thresholds
+    SLOW_REQUEST_THRESHOLD_MS: float = 1000.0
+
+    # AWS cost simulation rates
+    COST_CPU_PER_HOUR: float = 0.0416  # t3.medium equivalent
+    COST_IOPS_PER_1000: float = 0.005
+    COST_DATA_TRANSFER_PER_GB: float = 0.09
+    COST_CELERY_PER_1000: float = 0.02
 
     class Config:
         env_file = ".env"

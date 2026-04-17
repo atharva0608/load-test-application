@@ -3,517 +3,443 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="StressForge — Production-grade infrastructure load testing dashboard">
-    <title>StressForge — Infrastructure Load Testing Dashboard</title>
+    <meta name="description" content="StressForge v3.0 — Production-grade load testing, chaos engineering, and infrastructure observability dashboard">
+    <title>StressForge — Command Center</title>
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <!-- ═══ Sidebar Navigation ═══ -->
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <div class="logo">
-                <div class="logo-icon">
-                    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-                        <path d="M14 2L26 8V20L14 26L2 20V8L14 2Z" stroke="url(#logoGrad)" stroke-width="2" fill="none"/>
-                        <path d="M14 8L20 11V17L14 20L8 17V11L14 8Z" fill="url(#logoGrad2)" opacity="0.8"/>
-                        <defs>
-                            <linearGradient id="logoGrad" x1="2" y1="2" x2="26" y2="26">
-                                <stop stop-color="#818cf8"/>
-                                <stop offset="1" stop-color="#6366f1"/>
-                            </linearGradient>
-                            <linearGradient id="logoGrad2" x1="8" y1="8" x2="20" y2="20">
-                                <stop stop-color="#a5b4fc"/>
-                                <stop offset="1" stop-color="#818cf8"/>
-                            </linearGradient>
-                        </defs>
-                    </svg>
+
+<!-- ════════════════════════════════════════════════════ -->
+<!-- HEADER BAR                                          -->
+<!-- ════════════════════════════════════════════════════ -->
+<header id="header-bar">
+    <div class="header-left">
+        <div class="logo">
+            <span class="logo-icon">⚡</span>
+            <span class="logo-text">StressForge</span>
+            <span class="version-badge">v3.0</span>
+        </div>
+        <div class="test-status" id="test-status">
+            <span class="status-dot" id="status-dot"></span>
+            <span id="status-text">Idle</span>
+        </div>
+    </div>
+    <div class="header-center">
+        <div class="header-control">
+            <label for="time-window">Window</label>
+            <select id="time-window">
+                <option value="60">1 min</option>
+                <option value="300" selected>5 min</option>
+                <option value="900">15 min</option>
+                <option value="3600">1 hour</option>
+            </select>
+        </div>
+        <div class="header-control">
+            <label for="poll-interval">Interval</label>
+            <select id="poll-interval">
+                <option value="1000" selected>1s</option>
+                <option value="2000">2s</option>
+                <option value="5000">5s</option>
+            </select>
+        </div>
+        <button id="btn-pause" class="header-btn" title="Pause charts">⏸</button>
+        <button id="btn-export" class="header-btn" title="Export data">📥</button>
+    </div>
+    <div class="header-right">
+        <div class="connection-indicator" id="sse-indicator">
+            <span class="conn-dot"></span>
+            <span id="sse-status">Connecting…</span>
+        </div>
+    </div>
+</header>
+
+<!-- ════════════════════════════════════════════════════ -->
+<!-- MAIN LAYOUT: SIDEBAR + CONTENT                      -->
+<!-- ════════════════════════════════════════════════════ -->
+<div class="app-layout">
+
+    <!-- LEFT SIDEBAR NAV -->
+    <nav id="sidebar">
+        <button class="nav-btn active" data-tab="overview" id="nav-overview">
+            <span class="nav-icon">📊</span>
+            <span class="nav-label">Overview</span>
+        </button>
+        <button class="nav-btn" data-tab="infrastructure" id="nav-infrastructure">
+            <span class="nav-icon">🏗️</span>
+            <span class="nav-label">Infra</span>
+        </button>
+        <button class="nav-btn" data-tab="latency" id="nav-latency">
+            <span class="nav-icon">⏱️</span>
+            <span class="nav-label">Latency</span>
+        </button>
+        <button class="nav-btn" data-tab="queue" id="nav-queue">
+            <span class="nav-icon">📦</span>
+            <span class="nav-label">Queue</span>
+        </button>
+        <button class="nav-btn" data-tab="scenarios" id="nav-scenarios">
+            <span class="nav-icon">🎯</span>
+            <span class="nav-label">Scenarios</span>
+        </button>
+        <button class="nav-btn" data-tab="uptime" id="nav-uptime">
+            <span class="nav-icon">💚</span>
+            <span class="nav-label">Uptime</span>
+        </button>
+        <button class="nav-btn" data-tab="chaos" id="nav-chaos">
+            <span class="nav-icon">🔥</span>
+            <span class="nav-label">Chaos</span>
+        </button>
+        <button class="nav-btn" data-tab="cost" id="nav-cost">
+            <span class="nav-icon">💰</span>
+            <span class="nav-label">Cost</span>
+        </button>
+    </nav>
+
+    <!-- MAIN CONTENT AREA -->
+    <main id="content-area">
+
+        <!-- ═══ KPI TILES (Always visible) ═══ -->
+        <div id="kpi-strip">
+            <div class="kpi-tile" id="kpi-rps">
+                <div class="kpi-label">RPS</div>
+                <div class="kpi-value" id="kpi-rps-val">0</div>
+                <canvas class="kpi-spark" id="spark-rps" width="80" height="24"></canvas>
+                <div class="kpi-delta" id="kpi-rps-delta">—</div>
+            </div>
+            <div class="kpi-tile" id="kpi-throughput">
+                <div class="kpi-label">Throughput</div>
+                <div class="kpi-value" id="kpi-throughput-val">0 B/s</div>
+                <canvas class="kpi-spark" id="spark-throughput" width="80" height="24"></canvas>
+                <div class="kpi-delta" id="kpi-throughput-delta">—</div>
+            </div>
+            <div class="kpi-tile" id="kpi-p99">
+                <div class="kpi-label">P99 Latency</div>
+                <div class="kpi-value" id="kpi-p99-val">0 ms</div>
+                <canvas class="kpi-spark" id="spark-p99" width="80" height="24"></canvas>
+                <div class="kpi-delta" id="kpi-p99-delta">—</div>
+            </div>
+            <div class="kpi-tile" id="kpi-errors">
+                <div class="kpi-label">Error Rate</div>
+                <div class="kpi-value" id="kpi-errors-val">0%</div>
+                <canvas class="kpi-spark" id="spark-errors" width="80" height="24"></canvas>
+                <div class="kpi-delta" id="kpi-errors-delta">—</div>
+            </div>
+            <div class="kpi-tile" id="kpi-users">
+                <div class="kpi-label">Active Users</div>
+                <div class="kpi-value" id="kpi-users-val">0</div>
+                <canvas class="kpi-spark" id="spark-users" width="80" height="24"></canvas>
+                <div class="kpi-delta" id="kpi-users-delta">—</div>
+            </div>
+            <div class="kpi-tile" id="kpi-replicas">
+                <div class="kpi-label">Replicas</div>
+                <div class="kpi-value" id="kpi-replicas-val">1</div>
+                <canvas class="kpi-spark" id="spark-replicas" width="80" height="24"></canvas>
+                <div class="kpi-delta" id="kpi-replicas-delta">—</div>
+            </div>
+        </div>
+
+        <!-- ═══ TAB CONTENT PANELS ═══ -->
+
+        <!-- TAB 1: OVERVIEW -->
+        <div class="tab-panel active" id="tab-overview">
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <div class="chart-title">Load Curve + RPS</div>
+                    <canvas id="chart-load-rps"></canvas>
                 </div>
-                <div class="logo-text">
-                    <span class="logo-name">StressForge</span>
-                    <span class="logo-tag">v1.0.0</span>
+                <div class="chart-card">
+                    <div class="chart-title">Latency Percentiles</div>
+                    <canvas id="chart-latency-percentiles"></canvas>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title">Error Rate & Status Codes</div>
+                    <canvas id="chart-errors"></canvas>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title">Throughput</div>
+                    <canvas id="chart-throughput"></canvas>
                 </div>
             </div>
         </div>
 
-        <nav class="sidebar-nav">
-            <a href="#" class="nav-item active" data-tab="dashboard" id="nav-dashboard">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-                <span>Dashboard</span>
-            </a>
-            <a href="#" class="nav-item" data-tab="products" id="nav-products">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7L12 3L4 7M20 7L12 11M20 7V17L12 21M12 11L4 7M12 11V21M4 7V17L12 21"/></svg>
-                <span>Products</span>
-            </a>
-            <a href="#" class="nav-item" data-tab="orders" id="nav-orders">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/><path d="M9 14l2 2 4-4"/></svg>
-                <span>Orders</span>
-            </a>
-            <a href="#" class="nav-item" data-tab="stress" id="nav-stress">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                <span>Stress Test</span>
-            </a>
-            <a href="#" class="nav-item" data-tab="metrics" id="nav-metrics">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
-                <span>Metrics</span>
-            </a>
-        </nav>
-
-        <div class="sidebar-footer">
-            <div class="status-indicator" id="api-status">
-                <span class="status-dot"></span>
-                <span class="status-text">Connecting...</span>
+        <!-- TAB 2: INFRASTRUCTURE -->
+        <div class="tab-panel" id="tab-infrastructure">
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <div class="chart-title">CPU % per Pod</div>
+                    <canvas id="chart-cpu-pod"></canvas>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title">Memory RSS per Pod</div>
+                    <canvas id="chart-mem-pod"></canvas>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title">HPA Replica Count</div>
+                    <canvas id="chart-hpa"></canvas>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title">DB Connection Pool</div>
+                    <canvas id="chart-pool"></canvas>
+                </div>
+            </div>
+            <div class="tile-row" id="infra-tiles">
+                <div class="mini-tile"><span class="mini-label">Pool Used</span><span class="mini-value" id="infra-pool-used">0</span></div>
+                <div class="mini-tile"><span class="mini-label">Pool Waiting</span><span class="mini-value" id="infra-pool-waiting">0</span></div>
+                <div class="mini-tile"><span class="mini-label">CPU Avg</span><span class="mini-value" id="infra-cpu-avg">0%</span></div>
+                <div class="mini-tile"><span class="mini-label">RAM Used</span><span class="mini-value" id="infra-ram-used">0 MB</span></div>
             </div>
         </div>
-    </aside>
 
-    <!-- ═══ Main Content ═══ -->
-    <main class="main-content">
-        <!-- Top Bar -->
-        <header class="topbar">
-            <div class="topbar-left">
-                <button class="menu-toggle" id="menu-toggle" aria-label="Toggle sidebar">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
-                </button>
-                <h1 class="page-title" id="page-title">Dashboard</h1>
-            </div>
-            <div class="topbar-right">
-                <div class="auth-section" id="auth-section">
-                    <button class="btn btn-primary btn-sm" id="btn-login" onclick="showAuthModal()">Sign In</button>
+        <!-- TAB 3: LATENCY DEEP DIVE -->
+        <div class="tab-panel" id="tab-latency">
+            <div class="chart-grid two-col">
+                <div class="chart-card wide">
+                    <div class="chart-title">Latency Heatmap</div>
+                    <canvas id="chart-heatmap"></canvas>
                 </div>
-                <div class="user-section hidden" id="user-section">
-                    <span class="user-name" id="user-display"></span>
-                    <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
+                <div class="chart-card">
+                    <div class="chart-title">Latency Distribution</div>
+                    <canvas id="chart-latency-hist"></canvas>
                 </div>
             </div>
-        </header>
-
-        <!-- ═══ Tab: Dashboard ═══ -->
-        <section class="tab-content active" id="tab-dashboard">
-            <div class="stats-grid">
-                <div class="stat-card" id="stat-products">
-                    <div class="stat-icon stat-icon-indigo">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7L12 3L4 7M20 7L12 11M20 7V17L12 21M12 11L4 7M12 11V21M4 7V17L12 21"/></svg>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-label">Products</span>
-                        <span class="stat-value" id="stat-products-value">—</span>
-                    </div>
-                </div>
-                <div class="stat-card" id="stat-users">
-                    <div class="stat-icon stat-icon-emerald">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-label">Users</span>
-                        <span class="stat-value" id="stat-users-value">—</span>
-                    </div>
-                </div>
-                <div class="stat-card" id="stat-orders">
-                    <div class="stat-icon stat-icon-amber">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-label">Orders</span>
-                        <span class="stat-value" id="stat-orders-value">—</span>
-                    </div>
-                </div>
-                <div class="stat-card" id="stat-uptime">
-                    <div class="stat-icon stat-icon-rose">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-label">Uptime</span>
-                        <span class="stat-value" id="stat-uptime-value">—</span>
-                    </div>
+            <div class="chart-card full-width">
+                <div class="chart-title">Per-Endpoint Latency <span class="subtitle">(sorted by p99 desc)</span></div>
+                <div class="data-table-wrap">
+                    <table class="data-table" id="endpoint-latency-table">
+                        <thead>
+                            <tr>
+                                <th>Endpoint</th>
+                                <th>p50</th>
+                                <th>p95</th>
+                                <th>p99</th>
+                                <th>req/s</th>
+                                <th>Count</th>
+                            </tr>
+                        </thead>
+                        <tbody id="endpoint-latency-body"></tbody>
+                    </table>
                 </div>
             </div>
+            <div class="chart-card full-width">
+                <div class="chart-title">Slow Request Inspector <span class="subtitle">(&gt;1000ms)</span></div>
+                <div class="slow-feed" id="slow-request-feed"></div>
+            </div>
+        </div>
 
-            <!-- Response Time Chart -->
-            <div class="card chart-card">
-                <div class="card-header">
-                    <h2 class="card-title">Response Times</h2>
-                    <span class="badge badge-live">● LIVE</span>
+        <!-- TAB 4: QUEUE & WORKERS -->
+        <div class="tab-panel" id="tab-queue">
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <div class="chart-title">Queue Depth Over Time</div>
+                    <canvas id="chart-queue-depth"></canvas>
                 </div>
-                <div class="chart-container">
-                    <canvas id="response-chart" width="800" height="300"></canvas>
+                <div class="chart-card">
+                    <div class="chart-title">Worker Throughput</div>
+                    <canvas id="chart-worker-throughput"></canvas>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title">Task Duration by Type</div>
+                    <canvas id="chart-task-duration"></canvas>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title">Dead Letter Queue</div>
+                    <canvas id="chart-dlq"></canvas>
                 </div>
             </div>
-
-            <!-- Service Status Grid -->
-            <div class="services-grid">
-                <div class="service-card" id="svc-api">
-                    <div class="service-status-dot unknown"></div>
-                    <div class="service-info">
-                        <span class="service-name">API Server</span>
-                        <span class="service-detail">FastAPI :8000</span>
-                    </div>
-                    <span class="service-latency" id="svc-api-latency">—</span>
-                </div>
-                <div class="service-card" id="svc-db">
-                    <div class="service-status-dot unknown"></div>
-                    <div class="service-info">
-                        <span class="service-name">PostgreSQL</span>
-                        <span class="service-detail">StatefulSet :5432</span>
-                    </div>
-                    <span class="service-latency" id="svc-db-latency">—</span>
-                </div>
-                <div class="service-card" id="svc-redis">
-                    <div class="service-status-dot unknown"></div>
-                    <div class="service-info">
-                        <span class="service-name">Redis</span>
-                        <span class="service-detail">StatefulSet :6379</span>
-                    </div>
-                    <span class="service-latency" id="svc-redis-latency">—</span>
-                </div>
-                <div class="service-card" id="svc-worker">
-                    <div class="service-status-dot unknown"></div>
-                    <div class="service-info">
-                        <span class="service-name">Celery Worker</span>
-                        <span class="service-detail">Background Jobs</span>
-                    </div>
-                    <span class="service-latency">—</span>
+            <div class="tile-row" id="queue-tiles">
+                <div class="mini-tile"><span class="mini-label">Enqueued</span><span class="mini-value" id="q-enqueued">0</span></div>
+                <div class="mini-tile"><span class="mini-label">Completed</span><span class="mini-value" id="q-completed">0</span></div>
+                <div class="mini-tile"><span class="mini-label">Failed</span><span class="mini-value" id="q-failed">0</span></div>
+                <div class="mini-tile"><span class="mini-label">Drain Rate</span><span class="mini-value" id="q-drain">0/s</span></div>
+            </div>
+            <div class="action-row">
+                <button class="action-btn cyan" onclick="StressForge.triggerBurst(50, 'high')">🔥 Burst 50 HIGH</button>
+                <button class="action-btn cyan" onclick="StressForge.triggerBurst(100, 'medium')">📦 Burst 100 MED</button>
+                <button class="action-btn cyan" onclick="StressForge.fireChain()">🔗 Fire Chain</button>
+                <button class="action-btn cyan" onclick="StressForge.fireChord(10)">🎵 Fire Chord(10)</button>
+            </div>
+            <div class="chart-card full-width">
+                <div class="chart-title">Failed Tasks (DLQ)</div>
+                <div class="data-table-wrap">
+                    <table class="data-table" id="dlq-table">
+                        <thead><tr><th>Task</th><th>Error</th><th>Retries</th><th>Actions</th></tr></thead>
+                        <tbody id="dlq-body"></tbody>
+                    </table>
                 </div>
             </div>
-        </section>
+        </div>
 
-        <!-- ═══ Tab: Products ═══ -->
-        <section class="tab-content" id="tab-products">
-            <div class="toolbar">
-                <div class="search-box">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-                    <input type="text" id="product-search" placeholder="Search products..." class="search-input">
-                </div>
-                <select id="product-category" class="select-input">
-                    <option value="">All Categories</option>
-                </select>
-                <button class="btn btn-primary" id="btn-refresh-products" onclick="loadProducts()">Refresh</button>
-            </div>
-
-            <div class="products-grid" id="products-grid">
-                <div class="loading-skeleton">Loading products...</div>
-            </div>
-
-            <div class="pagination" id="products-pagination"></div>
-        </section>
-
-        <!-- ═══ Tab: Orders ═══ -->
-        <section class="tab-content" id="tab-orders">
-            <div class="toolbar">
-                <div class="toolbar-info">
-                    <h2>Order Management</h2>
-                    <p class="text-muted">Place and track orders (requires authentication)</p>
-                </div>
-                <div class="toolbar-actions">
-                    <button class="btn btn-primary" onclick="showOrderModal()" id="btn-new-order">+ New Order</button>
-                    <button class="btn btn-secondary" onclick="showBulkOrderModal()" id="btn-bulk-order">Bulk Create</button>
-                </div>
-            </div>
-
-            <div class="order-stats" id="order-stats-row">
-                <div class="mini-stat">
-                    <span class="mini-stat-value" id="os-total">—</span>
-                    <span class="mini-stat-label">Total Orders</span>
-                </div>
-                <div class="mini-stat">
-                    <span class="mini-stat-value" id="os-revenue">—</span>
-                    <span class="mini-stat-label">Revenue</span>
-                </div>
-                <div class="mini-stat">
-                    <span class="mini-stat-value" id="os-pending">—</span>
-                    <span class="mini-stat-label">Pending</span>
-                </div>
-                <div class="mini-stat">
-                    <span class="mini-stat-value" id="os-completed">—</span>
-                    <span class="mini-stat-label">Completed</span>
-                </div>
-            </div>
-
-            <div class="orders-list" id="orders-list">
-                <div class="empty-state">Sign in to view orders</div>
-            </div>
-        </section>
-
-        <!-- ═══ Tab: Stress Test ═══ -->
-        <section class="tab-content" id="tab-stress">
-            <div class="stress-header">
-                <h2>Infrastructure Stress Testing</h2>
-                <p class="text-muted">Execute targeted workloads to test CPU, Memory, and I/O performance</p>
-            </div>
-
-            <div class="stress-grid">
-                <!-- CPU Stress -->
-                <div class="stress-card stress-cpu">
-                    <div class="stress-card-header">
-                        <div class="stress-icon-wrap cpu">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg>
-                        </div>
-                        <h3>CPU Stress</h3>
+        <!-- TAB 5: SCENARIOS -->
+        <div class="tab-panel" id="tab-scenarios">
+            <div class="scenarios-layout">
+                <div class="scenario-builder-panel">
+                    <h3>Scenario Builder</h3>
+                    <div class="form-group">
+                        <label for="scenario-select">Load Shape</label>
+                        <select id="scenario-select">
+                            <option value="spike">⚡ Spike Test</option>
+                            <option value="soak">🕐 Soak Test</option>
+                            <option value="burst">💥 Burst Test</option>
+                            <option value="ramp">📈 Ramp Test</option>
+                            <option value="flash">🌊 Flash Crowd</option>
+                            <option value="custom">🛠️ Custom</option>
+                        </select>
                     </div>
-                    <p class="stress-desc">Fibonacci, matrix multiplication, SHA-256 hash chains</p>
-                    <div class="stress-controls">
-                        <label class="slider-label">
-                            Intensity: <span id="cpu-intensity-val">25</span>%
-                            <input type="range" id="cpu-intensity" min="1" max="100" value="25" class="slider" oninput="document.getElementById('cpu-intensity-val').textContent=this.value">
-                        </label>
-                        <button class="btn btn-stress btn-cpu" onclick="runStress('cpu')" id="btn-stress-cpu">
-                            <span class="btn-text">Execute</span>
-                            <span class="btn-spinner hidden"></span>
-                        </button>
+                    <div id="scenario-params">
+                        <div class="form-group"><label>Peak Users</label><input type="number" id="sc-peak" value="100"></div>
+                        <div class="form-group"><label>Ramp Duration (s)</label><input type="number" id="sc-ramp" value="30"></div>
+                        <div class="form-group"><label>Hold Duration (s)</label><input type="number" id="sc-hold" value="60"></div>
                     </div>
-                    <div class="stress-result" id="result-cpu"></div>
+                    <div class="scenario-preview">
+                        <canvas id="chart-scenario-preview" height="120"></canvas>
+                    </div>
+                    <button class="action-btn green full-width" id="btn-execute-scenario" onclick="StressForge.executeScenario()">▶ Execute Scenario</button>
                 </div>
-
-                <!-- Memory Stress -->
-                <div class="stress-card stress-memory">
-                    <div class="stress-card-header">
-                        <div class="stress-icon-wrap memory">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4v16h20V4H2zm4 4h4v2H6V8zm0 4h4v2H6v-2zm6-4h4v2h-4V8zm0 4h4v2h-4v-2zm6-4h2v2h-2V8zm0 4h2v2h-2v-2z"/></svg>
-                        </div>
-                        <h3>Memory Stress</h3>
+                <div class="scenario-status-panel">
+                    <h3>Active Scenario</h3>
+                    <div class="scenario-active-info" id="scenario-active-info">
+                        <div class="scenario-no-test">No test running</div>
                     </div>
-                    <p class="stress-desc">Large array allocation, data processing, hold patterns</p>
-                    <div class="stress-controls">
-                        <label class="slider-label">
-                            Allocation: <span id="mem-intensity-val">10</span> MB
-                            <input type="range" id="mem-intensity" min="1" max="100" value="10" class="slider slider-emerald" oninput="document.getElementById('mem-intensity-val').textContent=this.value">
-                        </label>
-                        <button class="btn btn-stress btn-memory" onclick="runStress('memory')" id="btn-stress-mem">
-                            <span class="btn-text">Execute</span>
-                            <span class="btn-spinner hidden"></span>
-                        </button>
-                    </div>
-                    <div class="stress-result" id="result-memory"></div>
-                </div>
-
-                <!-- IO Stress -->
-                <div class="stress-card stress-io">
-                    <div class="stress-card-header">
-                        <div class="stress-icon-wrap io">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
-                        </div>
-                        <h3>I/O Stress</h3>
-                    </div>
-                    <p class="stress-desc">Heavy DB queries, temp file writes, sequential reads</p>
-                    <div class="stress-controls">
-                        <label class="slider-label">
-                            Intensity: <span id="io-intensity-val">15</span>%
-                            <input type="range" id="io-intensity" min="1" max="100" value="15" class="slider slider-amber" oninput="document.getElementById('io-intensity-val').textContent=this.value">
-                        </label>
-                        <button class="btn btn-stress btn-io" onclick="runStress('io')" id="btn-stress-io">
-                            <span class="btn-text">Execute</span>
-                            <span class="btn-spinner hidden"></span>
-                        </button>
-                    </div>
-                    <div class="stress-result" id="result-io"></div>
-                </div>
-
-                <!-- Mixed Stress -->
-                <div class="stress-card stress-mixed">
-                    <div class="stress-card-header">
-                        <div class="stress-icon-wrap mixed">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                        </div>
-                        <h3>Mixed Stress</h3>
-                    </div>
-                    <p class="stress-desc">Combined CPU + Memory + I/O — full stack stress test</p>
-                    <div class="stress-controls">
-                        <label class="slider-label">
-                            Intensity: <span id="mixed-intensity-val">20</span>%
-                            <input type="range" id="mixed-intensity" min="1" max="100" value="20" class="slider slider-rose" oninput="document.getElementById('mixed-intensity-val').textContent=this.value">
-                        </label>
-                        <button class="btn btn-stress btn-mixed" onclick="runStress('mixed')" id="btn-stress-mixed">
-                            <span class="btn-text">Execute</span>
-                            <span class="btn-spinner hidden"></span>
-                        </button>
-                    </div>
-                    <div class="stress-result" id="result-mixed"></div>
-                </div>
-
-                <!-- Celery Worker Stress -->
-                <div class="stress-card stress-celery">
-                    <div class="stress-card-header">
-                        <div class="stress-icon-wrap celery" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                        </div>
-                        <h3>Worker Stress</h3>
-                    </div>
-                    <p class="stress-desc">Blast Celery with hundreds of background computationally heavy jobs</p>
-                    <div class="stress-controls">
-                        <label class="slider-label">
-                            Tasks/Sec: <span id="celery-intensity-val">30</span>
-                            <input type="range" id="celery-intensity" min="1" max="100" value="30" class="slider" style="accent-color: #8b5cf6" oninput="document.getElementById('celery-intensity-val').textContent=this.value">
-                        </label>
-                        <button class="btn btn-stress btn-celery" style="background:#8b5cf6" onclick="runStress('celery')" id="btn-stress-celery">
-                            <span class="btn-text">Queue Tasks</span>
-                            <span class="btn-spinner hidden"></span>
-                        </button>
-                    </div>
-                    <div class="stress-result" id="result-celery"></div>
-                </div>
-            </div>
-
-            <!-- Stress Test History -->
-            <div class="card" style="margin-top: 2rem;">
-                <div class="card-header">
-                    <h2 class="card-title">Test History</h2>
-                    <button class="btn btn-ghost btn-sm" onclick="clearStressHistory()">Clear</button>
-                </div>
-                <div class="stress-history" id="stress-history">
-                    <div class="empty-state">No tests executed yet</div>
-                </div>
-            </div>
-        </section>
-
-        <!-- ═══ Tab: Metrics ═══ -->
-        <section class="tab-content" id="tab-metrics">
-            <div class="metrics-header">
-                <h2>System Metrics</h2>
-                <p class="text-muted">Real-time system health and performance monitoring</p>
-                <button class="btn btn-primary btn-sm" onclick="refreshMetrics()">Refresh</button>
-            </div>
-
-            <div class="metrics-grid" id="metrics-grid">
-                <!-- System Gauges -->
-                <div class="card gauge-card">
-                    <div class="card-header">
-                        <h3 class="card-title">Live Server Hardware Usage</h3>
-                    </div>
-                    <div style="display:flex; justify-content:space-around; padding: 2rem 0;">
-                        <div class="gauge-container" style="text-align:center">
-                            <svg width="120" height="120" viewBox="0 0 120 120" class="circular-chart">
-                                <path class="circle-bg" d="M18 60 a 42 42 0 1 1 84 0 a 42 42 0 1 1 -84 0" fill="none" stroke="#e2e8f0" stroke-width="12"/>
-                                <path class="circle-fg" id="gauge-cpu" stroke-dasharray="0, 264" d="M18 60 a 42 42 0 1 1 84 0 a 42 42 0 1 1 -84 0" fill="none" stroke="#ef4444" stroke-width="12" stroke-linecap="round"/>
-                            </svg>
-                            <div style="font-weight:700; font-size:1.5rem; margin-top:1rem;" id="txt-cpu">0%</div>
-                            <div class="text-muted">CPU Usage</div>
-                        </div>
-                        <div class="gauge-container" style="text-align:center">
-                            <svg width="120" height="120" viewBox="0 0 120 120" class="circular-chart">
-                                <path class="circle-bg" d="M18 60 a 42 42 0 1 1 84 0 a 42 42 0 1 1 -84 0" fill="none" stroke="#e2e8f0" stroke-width="12"/>
-                                <path class="circle-fg" id="gauge-ram" stroke-dasharray="0, 264" d="M18 60 a 42 42 0 1 1 84 0 a 42 42 0 1 1 -84 0" fill="none" stroke="#3b82f6" stroke-width="12" stroke-linecap="round"/>
-                            </svg>
-                            <div style="font-weight:700; font-size:1.5rem; margin-top:1rem;" id="txt-ram">0%</div>
-                            <div class="text-muted" id="txt-ram-raw">0MB / 0MB</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Live Log Console -->
-                <div class="card log-card" style="grid-column: 1 / -1; background:#0f172a; color:#cbd5e1;">
-                    <div class="card-header" style="border-bottom:1px solid #334155">
-                        <h3 class="card-title" style="color:#f8fafc">Server Stress Execution Logs</h3>
-                        <span class="badge badge-live" style="background:#10b98122; color:#10b981">● POLLING</span>
-                    </div>
-                    <div class="console-output" id="live-console" style="height: 250px; overflow-y:auto; padding:1rem; font-family:'JetBrains Mono', monospace; font-size:0.875rem;">
-                        <div style="color:#64748b">> Server ready. Awaiting load test events...</div>
+                    <h3>History</h3>
+                    <div class="data-table-wrap">
+                        <table class="data-table" id="scenario-history-table">
+                            <thead><tr><th>Name</th><th>Started</th><th>Duration</th><th>Peak RPS</th><th>P99</th><th>Status</th></tr></thead>
+                            <tbody id="scenario-history-body"></tbody>
+                        </table>
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
+
+        <!-- TAB 6: UPTIME & SLA -->
+        <div class="tab-panel" id="tab-uptime">
+            <div class="uptime-status-banner" id="uptime-banner">
+                <span class="pulse-dot green"></span>
+                <span class="uptime-status-text" id="uptime-status-text">OPERATIONAL</span>
+                <span class="uptime-since" id="uptime-since">Checking…</span>
+            </div>
+            <div class="sla-tiles" id="sla-tiles">
+                <div class="sla-tile"><div class="sla-period">1 Hour</div><div class="sla-value" id="sla-1h">—</div><div class="sla-downtime" id="sla-1h-dt">—</div></div>
+                <div class="sla-tile"><div class="sla-period">24 Hours</div><div class="sla-value" id="sla-24h">—</div><div class="sla-downtime" id="sla-24h-dt">—</div></div>
+                <div class="sla-tile"><div class="sla-period">7 Days</div><div class="sla-value" id="sla-7d">—</div><div class="sla-downtime" id="sla-7d-dt">—</div></div>
+                <div class="sla-tile"><div class="sla-period">30 Days</div><div class="sla-value" id="sla-30d">—</div><div class="sla-downtime" id="sla-30d-dt">—</div></div>
+            </div>
+            <div class="chart-card full-width">
+                <div class="chart-title">90-Day Uptime Timeline</div>
+                <div class="timeline-bar" id="timeline-bar"></div>
+            </div>
+            <div class="chart-card full-width">
+                <div class="chart-title">Endpoint Health Matrix</div>
+                <div class="data-table-wrap">
+                    <table class="data-table" id="endpoint-health-table">
+                        <thead><tr><th>Endpoint</th><th>Status</th><th>Uptime %</th><th>Avg Latency</th><th>Last Check</th></tr></thead>
+                        <tbody id="endpoint-health-body"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="chart-card full-width">
+                <div class="chart-title">Incident Log</div>
+                <div class="data-table-wrap">
+                    <table class="data-table" id="incident-table">
+                        <thead><tr><th>Started</th><th>Duration</th><th>Endpoint</th><th>Cause</th><th>Status</th></tr></thead>
+                        <tbody id="incident-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 7: CHAOS -->
+        <div class="tab-panel" id="tab-chaos">
+            <div class="chaos-layout">
+                <div class="chaos-inject-panel">
+                    <h3>Failure Injection</h3>
+                    <div class="chaos-group">
+                        <div class="chaos-group-title">⚙️ Compute</div>
+                        <button class="chaos-btn" onclick="StressForge.injectChaos('application','kill',0,30)">Kill API Pod</button>
+                        <button class="chaos-btn" onclick="StressForge.injectChaos('application','cpu_throttle',0,60)">CPU Throttle</button>
+                    </div>
+                    <div class="chaos-group">
+                        <div class="chaos-group-title">💾 Data Layer</div>
+                        <button class="chaos-btn" onclick="StressForge.injectChaos('redis','error',0,30)">Restart Redis</button>
+                        <button class="chaos-btn" onclick="StressForge.injectChaos('redis','latency',500,60)">Redis +500ms</button>
+                        <button class="chaos-btn" onclick="StressForge.injectChaos('database','latency',1000,60)">DB +1000ms</button>
+                        <button class="chaos-btn" onclick="StressForge.injectChaos('database','error',0,30)">DB Circuit Break</button>
+                    </div>
+                    <div class="chaos-group">
+                        <div class="chaos-group-title">🧠 Application</div>
+                        <button class="chaos-btn" onclick="StressForge.injectChaos('application','memory_leak',500,60)">Memory Leak 50MB</button>
+                        <button class="chaos-btn" onclick="StressForge.injectChaos('application','pool_exhaust',0,30)">Pool Exhaust</button>
+                    </div>
+                    <button class="action-btn red full-width" onclick="StressForge.clearChaos()">🛑 Clear All Chaos</button>
+                </div>
+                <div class="chaos-monitor-panel">
+                    <h3>Recovery Timeline</h3>
+                    <div class="chart-card">
+                        <canvas id="chart-chaos-recovery"></canvas>
+                    </div>
+                    <div class="chaos-active-list" id="chaos-active-list">
+                        <div class="chaos-empty">No active chaos injections</div>
+                    </div>
+                    <h3>Chaos Log</h3>
+                    <div class="data-table-wrap">
+                        <table class="data-table" id="chaos-log-table">
+                            <thead><tr><th>Event</th><th>Target</th><th>Injected</th><th>Recovery</th><th>SLO</th></tr></thead>
+                            <tbody id="chaos-log-body"></tbody>
+                        </table>
+                    </div>
+                    <h3>Circuit Breakers</h3>
+                    <div class="cb-grid" id="cb-grid"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 8: COST SIMULATION -->
+        <div class="tab-panel" id="tab-cost">
+            <div class="cost-ticker-section">
+                <div class="cost-ticker">
+                    <div class="cost-ticker-label">Estimated AWS Spend</div>
+                    <div class="cost-ticker-value" id="cost-per-hour">$0.000 / hr</div>
+                    <div class="cost-ticker-sub" id="cost-projections">$0.00/month | $0.00/year</div>
+                </div>
+            </div>
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <div class="chart-title">Cost Breakdown</div>
+                    <canvas id="chart-cost-donut"></canvas>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title">Cost vs Load</div>
+                    <canvas id="chart-cost-scatter"></canvas>
+                </div>
+            </div>
+            <div class="chart-card full-width">
+                <div class="chart-title">Optimization Suggestions</div>
+                <div class="suggestions-list" id="cost-suggestions">
+                    <div class="suggestion-item">📊 Run a load test to generate cost analysis data</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ EVENT LOG (Always visible) ═══ -->
+        <div id="event-log">
+            <div class="event-log-header">
+                <span>Event Log</span>
+                <button class="event-log-clear" onclick="StressForge.clearEventLog()">Clear</button>
+            </div>
+            <div class="event-log-feed" id="event-feed">
+                <div class="event-entry info"><span class="event-time">—</span> StressForge v3.0 initialized. Waiting for SSE connection…</div>
+            </div>
+        </div>
+
     </main>
+</div>
 
-    <!-- ═══ Auth Modal ═══ -->
-    <div class="modal-overlay hidden" id="auth-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2 id="auth-modal-title">Sign In</h2>
-                <button class="btn-close" onclick="closeModal('auth-modal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="tabs-mini">
-                    <button class="tab-btn active" onclick="switchAuthTab('login')" id="tab-btn-login">Login</button>
-                    <button class="tab-btn" onclick="switchAuthTab('register')" id="tab-btn-register">Register</button>
-                </div>
-
-                <form id="login-form" onsubmit="handleLogin(event)">
-                    <div class="form-group">
-                        <label for="login-email">Email</label>
-                        <input type="email" id="login-email" class="form-input" placeholder="you@example.com" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="login-password">Password</label>
-                        <input type="password" id="login-password" class="form-input" placeholder="••••••••" required>
-                    </div>
-                    <div class="form-error hidden" id="login-error"></div>
-                    <button type="submit" class="btn btn-primary btn-full" id="btn-submit-login">Sign In</button>
-                </form>
-
-                <form id="register-form" class="hidden" onsubmit="handleRegister(event)">
-                    <div class="form-group">
-                        <label for="reg-username">Username</label>
-                        <input type="text" id="reg-username" class="form-input" placeholder="johndoe" required minlength="3">
-                    </div>
-                    <div class="form-group">
-                        <label for="reg-email">Email</label>
-                        <input type="email" id="reg-email" class="form-input" placeholder="you@example.com" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="reg-password">Password</label>
-                        <input type="password" id="reg-password" class="form-input" placeholder="••••••••" required minlength="6">
-                    </div>
-                    <div class="form-error hidden" id="register-error"></div>
-                    <button type="submit" class="btn btn-primary btn-full" id="btn-submit-register">Create Account</button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- ═══ Order Modal ═══ -->
-    <div class="modal-overlay hidden" id="order-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2>Place Order</h2>
-                <button class="btn-close" onclick="closeModal('order-modal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="order-form" onsubmit="handleOrder(event)">
-                    <div class="form-group">
-                        <label>Product ID</label>
-                        <input type="number" id="order-product-id" class="form-input" placeholder="1" required min="1">
-                    </div>
-                    <div class="form-group">
-                        <label>Quantity</label>
-                        <input type="number" id="order-quantity" class="form-input" value="1" required min="1" max="100">
-                    </div>
-                    <div class="form-group">
-                        <label>Shipping Address</label>
-                        <input type="text" id="order-address" class="form-input" placeholder="123 Main St, City, ST 12345">
-                    </div>
-                    <div class="form-error hidden" id="order-error"></div>
-                    <button type="submit" class="btn btn-primary btn-full">Place Order</button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- ═══ Bulk Order Modal ═══ -->
-    <div class="modal-overlay hidden" id="bulk-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2>Bulk Create Orders</h2>
-                <button class="btn-close" onclick="closeModal('bulk-modal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p class="text-muted" style="margin-bottom:1rem">Create multiple random orders to stress test the I/O pipeline.</p>
-                <form id="bulk-form" onsubmit="handleBulkOrder(event)">
-                    <div class="form-group">
-                        <label>Number of Orders</label>
-                        <input type="number" id="bulk-count" class="form-input" value="50" min="1" max="1000" required>
-                    </div>
-                    <div class="form-error hidden" id="bulk-error"></div>
-                    <div class="bulk-result hidden" id="bulk-result"></div>
-                    <button type="submit" class="btn btn-primary btn-full" id="btn-submit-bulk">Create Orders</button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- ═══ Toast Container ═══ -->
-    <div class="toast-container" id="toast-container"></div>
-
-    <script src="/js/app.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>
