@@ -1,6 +1,12 @@
 pipeline {
     agent any
 
+    parameters {
+        // Override these at build time to target a different cluster — no code change needed
+        string(name: 'CLUSTER_NAME', defaultValue: 'spot-demo-1',  description: 'EKS cluster name')
+        string(name: 'AWS_REGION',   defaultValue: 'ap-south-1',   description: 'AWS region of the EKS cluster')
+    }
+
     environment {
         // Core configuration
         DOCKER_HUB_USER = 'atharva608'
@@ -15,9 +21,9 @@ pipeline {
         WORKER_IMAGE = "${DOCKER_HUB_USER}/${APP_NAME}-worker"
         LOCUST_IMAGE = "${DOCKER_HUB_USER}/${APP_NAME}-locust"
 
-        // EKS cluster config
-        CLUSTER_NAME = 'spot-demo-1'
-        AWS_REGION   = 'ap-south-1'
+        // Resolved from parameters above (params.X is the Jenkins-idiomatic reference)
+        CLUSTER_NAME = "${params.CLUSTER_NAME}"
+        AWS_REGION   = "${params.AWS_REGION}"
     }
 
     stages {
