@@ -153,6 +153,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "${FRONTEND_HOST_PORT:-3001}:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
     depends_on:
       api:
         condition: service_healthy
