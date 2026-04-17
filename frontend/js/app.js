@@ -240,7 +240,7 @@ const StressForge = (() => {
         plugins: { legend: { display: true, labels: { color: '#6b7f8e', font: { family: "'JetBrains Mono'", size: 10 }, boxWidth: 8, padding: 8 } } },
         scales: {
             x: { ticks: { color: '#3a4a56', font: { family: "'JetBrains Mono'", size: 9 }, maxTicksLimit: 8 }, grid: { color: 'rgba(255,255,255,0.03)' } },
-            y: { ticks: { color: '#3a4a56', font: { family: "'JetBrains Mono'", size: 9 } }, grid: { color: 'rgba(255,255,255,0.03)' } },
+            y: { beginAtZero: true, suggestedMin: 0, suggestedMax: 10, ticks: { color: '#3a4a56', font: { family: "'JetBrains Mono'", size: 9 } }, grid: { color: 'rgba(255,255,255,0.03)' } },
         },
     };
 
