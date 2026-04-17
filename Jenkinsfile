@@ -1,12 +1,6 @@
 pipeline {
     agent any
 
-    parameters {
-        // Override these at build time to target a different cluster — no code change needed
-        string(name: 'CLUSTER_NAME', defaultValue: 'spot-demo-1',  description: 'EKS cluster name')
-        string(name: 'AWS_REGION',   defaultValue: 'ap-south-1',   description: 'AWS region of the EKS cluster')
-    }
-
     environment {
         // Core configuration
         DOCKER_HUB_USER = 'atharva608'
@@ -20,10 +14,6 @@ pipeline {
         FRONTEND_IMAGE = "${DOCKER_HUB_USER}/${APP_NAME}-frontend"
         WORKER_IMAGE = "${DOCKER_HUB_USER}/${APP_NAME}-worker"
         LOCUST_IMAGE = "${DOCKER_HUB_USER}/${APP_NAME}-locust"
-
-        // Resolved from parameters above (params.X is the Jenkins-idiomatic reference)
-        CLUSTER_NAME = "${params.CLUSTER_NAME}"
-        AWS_REGION   = "${params.AWS_REGION}"
     }
 
     stages {
@@ -127,41 +117,7 @@ pipeline {
                   chmod +x /usr/local/bin/yq
                 fi
 
-                # ----------------------------
-                # Install AWS CLI v2
-                # ----------------------------
-                if ! command -v aws >/dev/null 2>&1; then
-                  echo "Installing AWS CLI..."
-                  apt-get update -qq && apt-get install -y -qq unzip
-                  if [ "$ARCH" = "aarch64" ]; then
-                    curl -sSL "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o /tmp/awscliv2.zip
-                  else
-                    curl -sSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
-                  fi
-                  cd /tmp && unzip -q awscliv2.zip && ./aws/install && cd -
-                  rm -rf /tmp/awscliv2.zip /tmp/aws
-                fi
-
-                # ----------------------------
-                # Install kubectl
-                # ----------------------------
-                if ! command -v kubectl >/dev/null 2>&1; then
-                  echo "Installing kubectl..."
-                  KUBECTL_VERSION=$(curl -sSL https://dl.k8s.io/release/stable.txt)
-                  curl -sSLO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${BUILDX_ARCH}/kubectl"
-                  chmod +x kubectl && mv kubectl /usr/local/bin/kubectl
-                fi
-
-                # ----------------------------
-                # Install openssl (for OIDC thumbprint)
-                # ----------------------------
-                if ! command -v openssl >/dev/null 2>&1; then
-                  apt-get update -qq && apt-get install -y -qq openssl
-                fi
-
                 echo "✅ All tools ready"
-                aws --version
-                kubectl version --client
 
                 # ----------------------------
                 # Print versions (debug)
@@ -171,126 +127,6 @@ pipeline {
                 yq --version
                 git --version
                 curl --version
-                '''
-            }
-        }
-
-        stage('Bootstrap EKS Infrastructure') {
-            steps {
-                sh '''
-                set -e
-
-                echo "🔧 Ensuring EKS infrastructure is ready..."
-
-                # ── Read from Jenkins environment block (change only those two lines to retarget) ──
-                CLUSTER_NAME="${CLUSTER_NAME}"
-                REGION="${AWS_REGION}"
-                ROLE_NAME="AmazonEKS_EBS_CSI_DriverRole_${CLUSTER_NAME}"
-                EBS_POLICY_ARN="arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
-
-                # ── Configure kubectl ──────────────────────────────────
-                aws eks update-kubeconfig --name "$CLUSTER_NAME" --region "$REGION"
-                echo "✅ kubeconfig updated"
-
-                # ── Collect cluster identity ───────────────────────────
-                ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-                OIDC_ID=$(aws eks describe-cluster --name "$CLUSTER_NAME" --region "$REGION" \
-                  --query 'cluster.identity.oidc.issuer' --output text | cut -d'/' -f5)
-                OIDC_PROVIDER="oidc.eks.${REGION}.amazonaws.com/id/${OIDC_ID}"
-                OIDC_ARN="arn:aws:iam::${ACCOUNT_ID}:oidc-provider/${OIDC_PROVIDER}"
-
-                echo "Account   : $ACCOUNT_ID"
-                echo "OIDC ID   : $OIDC_ID"
-                echo "OIDC ARN  : $OIDC_ARN"
-
-                # ── Create OIDC provider if missing ────────────────────
-                if aws iam get-open-id-connect-provider --open-id-connect-provider-arn "$OIDC_ARN" > /dev/null 2>&1; then
-                  echo "✅ OIDC provider already exists"
-                else
-                  echo "Creating OIDC provider..."
-                  THUMBPRINT=$(openssl s_client \
-                    -connect "oidc.eks.${REGION}.amazonaws.com:443" \
-                    -servername "oidc.eks.${REGION}.amazonaws.com" \
-                    -showcerts </dev/null 2>/dev/null \
-                    | openssl x509 -fingerprint -sha1 -noout \
-                    | sed 's/.*=//;s/://g' | tr '[:upper:]' '[:lower:]')
-                  aws iam create-open-id-connect-provider \
-                    --url "https://${OIDC_PROVIDER}" \
-                    --client-id-list sts.amazonaws.com \
-                    --thumbprint-list "$THUMBPRINT"
-                  echo "✅ OIDC provider created"
-                fi
-
-                # ── Create IAM role if missing ─────────────────────────
-                if aws iam get-role --role-name "$ROLE_NAME" > /dev/null 2>&1; then
-                  echo "✅ IAM role already exists"
-                else
-                  echo "Creating EBS CSI IAM role..."
-                  cat > /tmp/ebs-trust.json << TRUSTEOF
-{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": {"Federated": "${OIDC_ARN}"},
-    "Action": "sts:AssumeRoleWithWebIdentity",
-    "Condition": {
-      "StringEquals": {
-        "${OIDC_PROVIDER}:aud": "sts.amazonaws.com",
-        "${OIDC_PROVIDER}:sub": "system:serviceaccount:kube-system:ebs-csi-controller-sa"
-      }
-    }
-  }]
-}
-TRUSTEOF
-                  aws iam create-role \
-                    --role-name "$ROLE_NAME" \
-                    --assume-role-policy-document file:///tmp/ebs-trust.json
-                  aws iam attach-role-policy \
-                    --role-name "$ROLE_NAME" \
-                    --policy-arn "$EBS_POLICY_ARN"
-                  echo "✅ IAM role created and policy attached"
-                fi
-
-                ROLE_ARN=$(aws iam get-role --role-name "$ROLE_NAME" --query Role.Arn --output text)
-                echo "Using role: $ROLE_ARN"
-
-                # ── Install EBS CSI addon if missing ───────────────────
-                ADDON_STATUS=$(aws eks describe-addon \
-                  --cluster-name "$CLUSTER_NAME" \
-                  --region "$REGION" \
-                  --addon-name aws-ebs-csi-driver \
-                  --query addon.status --output text 2>/dev/null || echo "NOT_FOUND")
-
-                if [ "$ADDON_STATUS" = "ACTIVE" ]; then
-                  echo "✅ EBS CSI addon already ACTIVE"
-                elif [ "$ADDON_STATUS" = "NOT_FOUND" ]; then
-                  echo "Installing aws-ebs-csi-driver addon..."
-                  aws eks create-addon \
-                    --cluster-name "$CLUSTER_NAME" \
-                    --region "$REGION" \
-                    --addon-name aws-ebs-csi-driver \
-                    --service-account-role-arn "$ROLE_ARN" \
-                    --resolve-conflicts OVERWRITE
-                  echo "Waiting for addon to become ACTIVE..."
-                  aws eks wait addon-active \
-                    --cluster-name "$CLUSTER_NAME" \
-                    --region "$REGION" \
-                    --addon-name aws-ebs-csi-driver
-                  echo "✅ EBS CSI addon is ACTIVE"
-                else
-                  echo "Addon is in state: $ADDON_STATUS — updating to ensure correct role..."
-                  aws eks update-addon \
-                    --cluster-name "$CLUSTER_NAME" \
-                    --region "$REGION" \
-                    --addon-name aws-ebs-csi-driver \
-                    --service-account-role-arn "$ROLE_ARN" \
-                    --resolve-conflicts OVERWRITE
-                  aws eks wait addon-active \
-                    --cluster-name "$CLUSTER_NAME" \
-                    --region "$REGION" \
-                    --addon-name aws-ebs-csi-driver
-                  echo "✅ EBS CSI addon is ACTIVE"
-                fi
                 '''
             }
         }
