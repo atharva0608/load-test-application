@@ -26,4 +26,4 @@ USER appuser
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD celery -A worker.tasks inspect ping --timeout 5 || exit 1
 
-CMD ["celery", "-A", "worker.tasks", "worker", "--loglevel=info", "--concurrency=2", "-Q", "default,orders,reports"]
+CMD ["celery", "-A", "worker.tasks", "worker", "--loglevel=info", "--concurrency=8", "-Q", "default,orders,reports,high_priority,medium_priority,low_priority,celery_dead_letter"]
