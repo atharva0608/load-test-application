@@ -284,10 +284,19 @@ body {
     border-radius: 8px;
     padding: 12px;
     height: 320px;
+    display: flex;
+    flex-direction: column;
     position: relative;
 }
 .chart-card.full-width { grid-column: 1 / -1; height: auto; min-height: 320px; }
 .chart-card.wide { height: 280px; }
+
+.canvas-wrapper {
+    position: relative;
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+}
 
 .chart-title {
     font-family: var(--font-heading);

@@ -151,19 +151,27 @@
             <div class="chart-grid">
                 <div class="chart-card">
                     <div class="chart-title">Load Curve + RPS</div>
-                    <canvas id="chart-load-rps"></canvas>
+                    <div class="canvas-wrapper">
+                        <canvas id="chart-load-rps"></canvas>
+                    </div>
                 </div>
                 <div class="chart-card">
                     <div class="chart-title">Latency Percentiles</div>
-                    <canvas id="chart-latency-percentiles"></canvas>
+                    <div class="canvas-wrapper">
+                        <canvas id="chart-latency-percentiles"></canvas>
+                    </div>
                 </div>
                 <div class="chart-card">
                     <div class="chart-title">Error Rate & Status Codes</div>
-                    <canvas id="chart-errors"></canvas>
+                    <div class="canvas-wrapper">
+                        <canvas id="chart-errors"></canvas>
+                    </div>
                 </div>
                 <div class="chart-card">
                     <div class="chart-title">Throughput</div>
-                    <canvas id="chart-throughput"></canvas>
+                    <div class="canvas-wrapper">
+                        <canvas id="chart-throughput"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -173,19 +181,27 @@
             <div class="chart-grid">
                 <div class="chart-card">
                     <div class="chart-title">CPU % per Pod</div>
-                    <canvas id="chart-cpu-pod"></canvas>
+                    <div class="canvas-wrapper">
+                        <canvas id="chart-cpu-pod"></canvas>
+                    </div>
                 </div>
                 <div class="chart-card">
                     <div class="chart-title">Memory RSS per Pod</div>
-                    <canvas id="chart-mem-pod"></canvas>
+                    <div class="canvas-wrapper">
+                        <canvas id="chart-mem-pod"></canvas>
+                    </div>
                 </div>
                 <div class="chart-card">
                     <div class="chart-title">HPA Replica Count</div>
-                    <canvas id="chart-hpa"></canvas>
+                    <div class="canvas-wrapper">
+                        <canvas id="chart-hpa"></canvas>
+                    </div>
                 </div>
                 <div class="chart-card">
                     <div class="chart-title">DB Connection Pool</div>
-                    <canvas id="chart-pool"></canvas>
+                    <div class="canvas-wrapper">
+                        <canvas id="chart-pool"></canvas>
+                    </div>
                 </div>
             </div>
             <div class="tile-row" id="infra-tiles">
@@ -201,11 +217,15 @@
             <div class="chart-grid two-col">
                 <div class="chart-card wide">
                     <div class="chart-title">Latency Heatmap</div>
-                    <canvas id="chart-heatmap"></canvas>
+                    <div class="canvas-wrapper">
+                        <canvas id="chart-heatmap"></canvas>
+                    </div>
                 </div>
                 <div class="chart-card">
                     <div class="chart-title">Latency Distribution</div>
-                    <canvas id="chart-latency-hist"></canvas>
+                    <div class="canvas-wrapper">
+                        <canvas id="chart-latency-hist"></canvas>
+                    </div>
                 </div>
             </div>
             <div class="chart-card full-width">
@@ -237,19 +257,27 @@
             <div class="chart-grid">
                 <div class="chart-card">
                     <div class="chart-title">Queue Depth Over Time</div>
-                    <canvas id="chart-queue-depth"></canvas>
+                    <div class="canvas-wrapper">
+                        <canvas id="chart-queue-depth"></canvas>
+                    </div>
                 </div>
                 <div class="chart-card">
                     <div class="chart-title">Worker Throughput</div>
-                    <canvas id="chart-worker-throughput"></canvas>
+                    <div class="canvas-wrapper">
+                        <canvas id="chart-worker-throughput"></canvas>
+                    </div>
                 </div>
                 <div class="chart-card">
                     <div class="chart-title">Task Duration by Type</div>
-                    <canvas id="chart-task-duration"></canvas>
+                    <div class="canvas-wrapper">
+                        <canvas id="chart-task-duration"></canvas>
+                    </div>
                 </div>
                 <div class="chart-card">
                     <div class="chart-title">Dead Letter Queue</div>
-                    <canvas id="chart-dlq"></canvas>
+                    <div class="canvas-wrapper">
+                        <canvas id="chart-dlq"></canvas>
+                    </div>
                 </div>
             </div>
             <div class="tile-row" id="queue-tiles">
@@ -297,7 +325,9 @@
                         <div class="form-group"><label>Hold Duration (s)</label><input type="number" id="sc-hold" value="60"></div>
                     </div>
                     <div class="scenario-preview">
+                        <div class="canvas-wrapper">
                         <canvas id="chart-scenario-preview" height="120"></canvas>
+                    </div>
                     </div>
                     <button class="action-btn green full-width" id="btn-execute-scenario" onclick="StressForge.executeScenario()">▶ Execute Scenario</button>
                 </div>
@@ -381,7 +411,9 @@
                 <div class="chaos-monitor-panel">
                     <h3>Recovery Timeline</h3>
                     <div class="chart-card">
+                        <div class="canvas-wrapper">
                         <canvas id="chart-chaos-recovery"></canvas>
+                    </div>
                     </div>
                     <div class="chaos-active-list" id="chaos-active-list">
                         <div class="chaos-empty">No active chaos injections</div>
@@ -411,11 +443,15 @@
             <div class="chart-grid">
                 <div class="chart-card">
                     <div class="chart-title">Cost Breakdown</div>
-                    <canvas id="chart-cost-donut"></canvas>
+                    <div class="canvas-wrapper">
+                        <canvas id="chart-cost-donut"></canvas>
+                    </div>
                 </div>
                 <div class="chart-card">
                     <div class="chart-title">Cost vs Load</div>
-                    <canvas id="chart-cost-scatter"></canvas>
+                    <div class="canvas-wrapper">
+                        <canvas id="chart-cost-scatter"></canvas>
+                    </div>
                 </div>
             </div>
             <div class="chart-card full-width">
