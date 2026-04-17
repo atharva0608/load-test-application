@@ -347,7 +347,6 @@ const StressForge = (() => {
     }
 
     function createChart(canvasId, type, datasets, options) {
-        
         const canvas = document.getElementById(canvasId);
         if (!canvas) return null;
 
@@ -355,14 +354,14 @@ const StressForge = (() => {
             const wrapper = document.createElement('div');
             wrapper.className = 'canvas-wrapper';
             wrapper.style.position = 'relative';
-            wrapper.style.flex = '1';
-            wrapper.style.minHeight = '0';
             wrapper.style.width = '100%';
-            wrapper.style.height = '100%';
             
-            // Make parent card a flex column
-            canvas.parentElement.style.display = 'flex';
-            canvas.parentElement.style.flexDirection = 'column';
+            // Assign explicitly fixed heights based on the parent card class
+            if (canvas.parentElement.classList.contains('wide')) {
+                wrapper.style.height = '220px';
+            } else {
+                wrapper.style.height = '260px';
+            }
             
             canvas.parentNode.insertBefore(wrapper, canvas);
             wrapper.appendChild(canvas);
