@@ -240,7 +240,7 @@ const StressForge = (() => {
         plugins: { legend: { display: true, labels: { color: '#6b7f8e', font: { family: "'JetBrains Mono'", size: 10 }, boxWidth: 8, padding: 8 } } },
         scales: {
             x: { ticks: { color: '#3a4a56', font: { family: "'JetBrains Mono'", size: 9 }, maxTicksLimit: 8 }, grid: { color: 'rgba(255,255,255,0.03)' } },
-            y: { ticks: { color: '#3a4a56', font: { family: "'JetBrains Mono'", size: 9 } }, grid: { color: 'rgba(255,255,255,0.03)' } },
+            y: { beginAtZero: true, suggestedMin: 0, suggestedMax: 10, ticks: { color: '#3a4a56', font: { family: "'JetBrains Mono'", size: 9 } }, grid: { color: 'rgba(255,255,255,0.03)' } },
         },
     };
 
@@ -349,23 +349,6 @@ const StressForge = (() => {
     function createChart(canvasId, type, datasets, options) {
         const canvas = document.getElementById(canvasId);
         if (!canvas) return null;
-
-        if (canvas.parentElement && !canvas.parentElement.classList.contains('canvas-wrapper')) {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'canvas-wrapper';
-            wrapper.style.position = 'relative';
-            wrapper.style.width = '100%';
-            
-            // Assign explicitly fixed heights based on the parent card class
-            if (canvas.parentElement.classList.contains('wide')) {
-                wrapper.style.height = '220px';
-            } else {
-                wrapper.style.height = '260px';
-            }
-            
-            canvas.parentNode.insertBefore(wrapper, canvas);
-            wrapper.appendChild(canvas);
-        }
 
         return new Chart(canvas, {
             type,
