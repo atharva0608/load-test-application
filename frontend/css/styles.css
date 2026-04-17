@@ -283,11 +283,11 @@ body {
     border: var(--border-card);
     border-radius: 8px;
     padding: 12px;
-    min-height: 200px;
+    height: 320px;
     position: relative;
 }
-.chart-card.full-width { grid-column: 1 / -1; min-height: auto; }
-.chart-card.wide { min-height: 180px; }
+.chart-card.full-width { grid-column: 1 / -1; height: auto; min-height: 320px; }
+.chart-card.wide { height: 280px; }
 
 .chart-title {
     font-family: var(--font-heading);

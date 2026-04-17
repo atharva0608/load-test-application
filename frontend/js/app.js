@@ -347,8 +347,27 @@ const StressForge = (() => {
     }
 
     function createChart(canvasId, type, datasets, options) {
+        
         const canvas = document.getElementById(canvasId);
         if (!canvas) return null;
+
+        if (canvas.parentElement && !canvas.parentElement.classList.contains('canvas-wrapper')) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'canvas-wrapper';
+            wrapper.style.position = 'relative';
+            wrapper.style.flex = '1';
+            wrapper.style.minHeight = '0';
+            wrapper.style.width = '100%';
+            wrapper.style.height = '100%';
+            
+            // Make parent card a flex column
+            canvas.parentElement.style.display = 'flex';
+            canvas.parentElement.style.flexDirection = 'column';
+            
+            canvas.parentNode.insertBefore(wrapper, canvas);
+            wrapper.appendChild(canvas);
+        }
+
         return new Chart(canvas, {
             type,
             data: { labels: type === 'doughnut' ? ['EC2', 'RDS', 'EBS', 'Transfer', 'Redis'] : [], datasets },
